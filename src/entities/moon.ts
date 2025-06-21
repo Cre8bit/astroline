@@ -1,25 +1,34 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { scene, camera } from "../core/scene";
+import { Entity } from "../core/entity";
 
-export const moon: { value: THREE.Object3D | undefined } = { value: undefined };
+export class Moon extends Entity {
+  private readonly modelPath: string;
+  constructor(path: string = "") {
+    super();
+    this.modelPath = path;
+  }
 
-// Adjusted to allow reassignment of 'moon'
+  loadModel(): Promise<THREE.Object3D> {
+    return new Promise((resolve, reject) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        this.modelPath,
+        (gltf) => {
+          this.object = gltf.scene;
+          this.setScale(1, 1, 1);
+          this.setPosition(0, 0, 0);
+          resolve(this.object);
+        },
+        undefined,
+        (error) => {
+          reject(new Error(error instanceof Error ? error.message : String(error)));
+        }
+      );
+    });
+  }
 
-export function loadMoonModel() {
-  const loader = new GLTFLoader();
-  loader.load(
-    "/models/Moon.glb",
-    (gltf) => {
-      moon.value = gltf.scene;
-      scene.add(moon.value);
-      moon.value.scale.set(1, 1, 1);
-      moon.value.position.set(0, 0, 0);
-      camera.lookAt(moon.value.position);
-    },
-    undefined,
-    (error) => {
-      console.error("Error loading Moon model:", error);
-    }
-  );
+  getObject(): THREE.Object3D | null {
+    return this.object;
+  }
 }
