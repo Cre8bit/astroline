@@ -3,6 +3,9 @@ import * as THREE from "three";
 export class Entity {
   public object: THREE.Object3D;
   protected scene: THREE.Scene;
+  public velocity = new THREE.Vector3();
+  public mass: number = 1;
+  public isStatic: boolean = false;
   constructor(
     scene: THREE.Scene,
     params: {
@@ -49,8 +52,8 @@ export class Entity {
     if (this.object) {
       if (arg1 instanceof THREE.Vector3) {
         this.object.position.copy(arg1);
-      } else {
-        this.object.position.set(arg1, arg2!, arg3!);
+      } else if (typeof arg1 === 'number' && typeof arg2 === 'number' && typeof arg3 === 'number') {
+        this.object.position.set(arg1, arg2, arg3);
       }
     }
   }
@@ -61,8 +64,8 @@ export class Entity {
     if (this.object) {
       if (arg1 instanceof THREE.Vector3) {
         this.object.scale.copy(arg1);
-      } else {
-        this.object.scale.set(arg1, arg2!, arg3!);
+      } else if (typeof arg1 === 'number' && typeof arg2 === 'number' && typeof arg3 === 'number') {
+        this.object.scale.set(arg1, arg2, arg3);
       }
     }
   }

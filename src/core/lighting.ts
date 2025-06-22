@@ -6,7 +6,7 @@ export function SetupSpaceLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 
   const directions = [
-    { color: 0xfff8e7, intensity: 2, pos: [100, 200, 150] },
+    { color: 0xfff8e7, intensity: 5, pos: [100, 200, 150] },
     { color: 0xe7f8ff, intensity: 2, pos: [-150, 100, 200] },
     { color: 0xf8e7ff, intensity: 2, pos: [200, -100, -150] }
   ];

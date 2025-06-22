@@ -11,5 +11,7 @@ export class Moon extends Entity {
     }
   ) {
     super(scene, params);
+    this.mass = 100;
+    this.isStatic = true;
   }
 }

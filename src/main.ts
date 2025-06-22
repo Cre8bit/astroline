@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { SetupSpaceLighting, Starfield } from "./core/lighting";
 import { SceneManager } from "./core/sceneManager";
 import { Player } from "./entities/player";
@@ -6,6 +5,14 @@ import { Moon } from "./entities/moon";
 import { Cristal } from "./entities/cristal";
 import { TrainHead } from "./entities/trainHead";
 import { GLBModelLoader } from "./core/modelLoader";
+import * as THREE from "three";
+
+
+//Player coordinates HUD
+const hud = document.getElementById("hud-coordinates")!;
+
+// Initialize clock for animation timing
+const clock = new THREE.Clock();
 
 //Load models
 const moonModel = await GLBModelLoader.load("/models/moon/Moon.glb");
@@ -22,7 +29,7 @@ SetupSpaceLighting(sceneManager.scene);
 const starfield = new Starfield(sceneManager.scene);
 
 //Setup player
-const player = new Player(sceneManager.scene);
+const player = new Player(sceneManager.scene, { position: [0, 40, -10], rotation: [0, Math.PI, 0] });
 
 //Setup entities
 const moon = new Moon(sceneManager.scene, { object: moonModel, scale: 0.5 });
@@ -34,7 +41,17 @@ const trainHead = new TrainHead(sceneManager.scene, player, {
 
 function animate(): void {
   requestAnimationFrame(animate);
+
+  const delta = clock.getDelta();
+
   player.handleFreeCamMovement();
+  trainHead.handleTrainMovement(delta);
+
+  const playerPosition = player.getPlayerPosition();
+  hud.textContent = `X: ${playerPosition.x.toFixed(
+    2
+  )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
+
   sceneManager.renderer.render(sceneManager.scene, player.camera);
 }
 animate();
