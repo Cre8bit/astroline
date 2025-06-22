@@ -1,9 +1,12 @@
-import * as THREE from "three";
 import { Entity } from "../core/entity";
+import type { Player } from "./player";
+import * as THREE from "three";
 
-export class Moon extends Entity {
+export class TrainHead extends Entity {
+  private readonly player: Player;
   constructor(
     scene: THREE.Scene,
+    player: Player,
     params: {
       object: THREE.Object3D;
       position?: THREE.Vector3 | [number, number, number];
@@ -11,5 +14,10 @@ export class Moon extends Entity {
     }
   ) {
     super(scene, params);
+    this.player = player;
+  }
+
+  public getPlayer(): Player {
+    return this.player;
   }
 }

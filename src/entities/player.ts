@@ -9,8 +9,15 @@ export class Player extends Entity {
   private readonly velocity: THREE.Vector3;
   private moveSpeed: number;
 
-  constructor() {
-    super();
+  constructor(
+    scene: THREE.Scene,
+    params: {
+      object?: THREE.Object3D;
+      position?: THREE.Vector3 | [number, number, number];
+      scale?: THREE.Vector3 | number;
+    } = {}
+  ) {
+    super(scene, params);
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
@@ -42,23 +49,40 @@ export class Player extends Entity {
   }
 
   handleFreeCamMovement() {
-    this.velocity.set(0, 0, 0);
-    if (this.keysPressed["z"]) this.velocity.z = this.moveSpeed;
-    if (this.keysPressed["s"]) this.velocity.z = -this.moveSpeed;
-    if (this.keysPressed["q"]) this.velocity.x = -this.moveSpeed;
-    if (this.keysPressed["d"]) this.velocity.x = this.moveSpeed;
     if (this.keysPressed["shift"]) {
-      this.moveSpeed = 0.5;
+      this.moveSpeed = 0.8;
     } else {
       this.moveSpeed = 0.1;
     }
 
-    const playerObject = this.controls.object;
-    const playerPosition = playerObject.position;
-    if (this.keysPressed[" "]) playerPosition.y += this.moveSpeed;
-    if (this.keysPressed["a"]) playerPosition.y -= this.moveSpeed;
+    const direction = new THREE.Vector3();
+    this.controls.getDirection(direction);
 
-    this.controls.moveRight(this.velocity.x);
-    this.controls.moveForward(this.velocity.z);
+    const object = this.controls.object;
+
+    if (this.keysPressed["z"]) {
+      object.position.add(direction.clone().multiplyScalar(this.moveSpeed));
+    }
+    if (this.keysPressed["s"]) {
+      object.position.add(direction.clone().multiplyScalar(-this.moveSpeed));
+    }
+
+    const right = new THREE.Vector3();
+    this.camera.getWorldDirection(right);
+    right.cross(this.camera.up).normalize();
+
+    if (this.keysPressed["d"]) {
+      object.position.add(right.clone().multiplyScalar(this.moveSpeed));
+    }
+    if (this.keysPressed["q"]) {
+      object.position.add(right.clone().multiplyScalar(-this.moveSpeed));
+    }
+
+    if (this.keysPressed[" "]) {
+      object.position.y += this.moveSpeed;
+    }
+    if (this.keysPressed["a"]) {
+      object.position.y -= this.moveSpeed;
+    }
   }
 }

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Entity } from "../core/entity";
 
-export class Moon extends Entity {
+export class Cristal extends Entity {
   constructor(
     scene: THREE.Scene,
     params: {
