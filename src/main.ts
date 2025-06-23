@@ -7,9 +7,11 @@ import { TrainHead } from "./entities/trainHead";
 import { GLBModelLoader } from "./core/modelLoader";
 import * as THREE from "three";
 
-
 //Player coordinates HUD
 const hud = document.getElementById("hud-coordinates")!;
+// Add FPS counter element
+const fpsCounter = document.getElementById("hud-fps")!;
+let lastFrameTime = performance.now();
 
 // Initialize clock for animation timing
 const clock = new THREE.Clock();
@@ -29,23 +31,33 @@ SetupSpaceLighting(sceneManager.scene);
 const starfield = new Starfield(sceneManager.scene);
 
 //Setup player
-const player = new Player(sceneManager.scene, { position: [0, 40, -10], rotation: [0, Math.PI, 0] });
+const player = new Player(sceneManager.scene, {
+  position: [0, 40, -10],
+  rotation: [0, Math.PI, 0],
+});
 
 //Setup entities
-const moon = new Moon(sceneManager.scene, { object: moonModel, scale: 0.5 });
+const moon1 = new Moon(sceneManager.scene, { object: moonModel.clone(), scale: 0.5 });
 const cristal = new Cristal(sceneManager.scene, { object: cristalModel });
 const trainHead = new TrainHead(sceneManager.scene, player, {
   object: trainHeadModel,
   position: [0, 40, 0],
 });
 
+
 function animate(): void {
   requestAnimationFrame(animate);
 
+  const currentFrameTime = performance.now();
+  const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
+  lastFrameTime = currentFrameTime;
+  fpsCounter.textContent = `FPS: ${fps}`;
+  
+  let playerIntent = player.computeControllerIntent();
+  let trainIntent = trainHead.computeControllerIntent();
   const delta = clock.getDelta();
-
-  player.handleFreeCamMovement();
-  trainHead.handleTrainMovement(delta);
+  player.applyIntent(playerIntent, delta);
+  trainHead.applyIntent(trainIntent, delta);
 
   const playerPosition = player.getPlayerPosition();
   hud.textContent = `X: ${playerPosition.x.toFixed(

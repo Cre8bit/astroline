@@ -1,6 +1,6 @@
-export const PlayerMode = {
+export const PlayerModeEnum = {
     Train: 'train',
     FreeCam: 'freecam',
 } as const;
 
-export type PlayerMode = typeof PlayerMode[keyof typeof PlayerMode];
+export type PlayerModeEnum = typeof PlayerModeEnum[keyof typeof PlayerModeEnum];

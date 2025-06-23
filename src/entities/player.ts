@@ -1,14 +1,15 @@
-import { Entity } from "../core/entity";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import * as THREE from "three";
-import { PlayerMode } from "../enums/playerModeEnum";
+import { PlayerModeEnum } from "../enums/playerModeEnum";
+import { PlayerController } from "../controller/playerController";
+import { MovingEntity } from "../core/movingEntity";
+import type { MovementIntentEnum } from "../controller/enums/mouvementIntentEnum";
 
-export class Player extends Entity {
+export class Player extends MovingEntity<PlayerController> {
   public controls: PointerLockControls;
   public camera: THREE.PerspectiveCamera;
-  private keysPressed: { [key: string]: boolean };
-  private moveSpeed: number;
-  private mode: PlayerMode = PlayerMode.FreeCam;
+  public controller: PlayerController;
+  private mode: PlayerModeEnum = PlayerModeEnum.FreeCam;
   constructor(
     scene: THREE.Scene,
     params: {
@@ -26,27 +27,32 @@ export class Player extends Entity {
       1000
     );
     this.controls = new PointerLockControls(this.camera, document.body);
-    if (params.rotation instanceof THREE.Euler) {
-      this.setPlayerRotation(params.rotation);
-    } else if (Array.isArray(params.rotation)) {
+    this.setupPlayer(
+      params.position ?? new THREE.Vector3(0, 0, 0),
+      params.rotation ?? new THREE.Euler(0, 0, 0)
+    );
+    this.controller = new PlayerController(this.camera, this.controls);
+    this.setupControlsListener();
+  }
+
+  setupPlayer(
+    position: THREE.Vector3 | [number, number, number],
+    rotation: THREE.Euler | [number, number, number]
+  ) {
+    if (rotation instanceof THREE.Euler) {
+      this.setPlayerRotation(rotation);
+    } else if (Array.isArray(rotation)) {
       this.setPlayerRotation(
-        params.rotation[0] ?? 0,
-        params.rotation[1] ?? 0,
-        params.rotation[2] ?? 0
+        rotation[0] ?? 0,
+        rotation[1] ?? 0,
+        rotation[2] ?? 0
       );
     }
-    if (Array.isArray(params.position)) {
-      this.setPlayerPosition(
-        params.position[0],
-        params.position[1],
-        params.position[2]
-      );
+    if (Array.isArray(position)) {
+      this.setPlayerPosition(position[0], position[1], position[2]);
     } else {
-      this.setPlayerPosition(params.position || new THREE.Vector3(0, 0, 0));
+      this.setPlayerPosition(position || new THREE.Vector3(0, 0, 0));
     }
-    this.keysPressed = {};
-    this.moveSpeed = 0.1;
-    this.setupControls();
   }
   setPlayerPosition(position: THREE.Vector3): void;
   setPlayerPosition(x: number, y: number, z: number): void;
@@ -88,71 +94,40 @@ export class Player extends Entity {
     return this.controls.object.position.clone();
   }
 
-  setupControls() {
+  setupControlsListener() {
     document.body.addEventListener("click", () => this.controls.lock());
 
     window.addEventListener("keydown", (e) => {
-      this.keysPressed[e.key.toLowerCase()] = true;
-
       if (e.key.toLowerCase() === "x") {
         this.toggleMode();
       }
-    });
-
-    window.addEventListener("keyup", (e) => {
-      this.keysPressed[e.key.toLowerCase()] = false;
     });
   }
 
   toggleMode() {
     this.mode =
-      this.mode === PlayerMode.Train ? PlayerMode.FreeCam : PlayerMode.Train;
+      this.mode === PlayerModeEnum.Train
+        ? PlayerModeEnum.FreeCam
+        : PlayerModeEnum.Train;
     console.log(`Switched mode to ${this.mode}`);
   }
 
-  handleFreeCamMovement() {
-    if (this.mode !== "freecam") return;
-
-    if (this.keysPressed["shift"]) {
-      this.moveSpeed = 0.8;
-    } else {
-      this.moveSpeed = 0.1;
+  public computeControllerIntent(): MovementIntentEnum {
+    if (this.mode === PlayerModeEnum.FreeCam) {
+      return this.controller.computeInputIntent();
     }
+    return {} as MovementIntentEnum;
+  }
 
-    const direction = new THREE.Vector3();
-    this.controls.getDirection(direction);
-
-    const object = this.controls.object;
-
-    if (this.keysPressed["z"]) {
-      object.position.add(direction.clone().multiplyScalar(this.moveSpeed));
-    }
-    if (this.keysPressed["s"]) {
-      object.position.add(direction.clone().multiplyScalar(-this.moveSpeed));
-    }
-
-    const right = new THREE.Vector3();
-    this.camera.getWorldDirection(right);
-    right.cross(this.camera.up).normalize();
-
-    if (this.keysPressed["d"]) {
-      object.position.add(right.clone().multiplyScalar(this.moveSpeed));
-    }
-    if (this.keysPressed["q"]) {
-      object.position.add(right.clone().multiplyScalar(-this.moveSpeed));
-    }
-
-    if (this.keysPressed[" "]) {
-      object.position.y += this.moveSpeed;
-    }
-    if (this.keysPressed["a"]) {
-      object.position.y -= this.moveSpeed;
+  public applyIntent(intent: MovementIntentEnum, delta: number) {
+    if (this.mode === PlayerModeEnum.FreeCam) {
+      this.controls.object.position.add(
+        intent.direction.clone().multiplyScalar(intent.speed * delta)
+      );
     }
   }
+
   isOnTrain(): boolean {
-    return this.mode === PlayerMode.Train;
-  }
-  isShiftPressed(): boolean {
-    return !!this.keysPressed["shift"];
+    return this.mode === PlayerModeEnum.Train;
   }
 }
