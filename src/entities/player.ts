@@ -1,15 +1,11 @@
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import * as THREE from "three";
-import { PlayerModeEnum } from "../enums/playerModeEnum";
-import { PlayerController } from "../controller/playerController";
-import { MovingEntity } from "../core/movingEntity";
-import type { MovementIntentEnum } from "../controller/enums/mouvementIntentEnum";
+import type { MovementIntent } from "../core/interfaces/movementIntent";
+import { Entity } from "./entity";
 
-export class Player extends MovingEntity<PlayerController> {
+export class Player extends Entity {
   public controls: PointerLockControls;
   public camera: THREE.PerspectiveCamera;
-  public controller: PlayerController;
-  private mode: PlayerModeEnum = PlayerModeEnum.FreeCam;
   constructor(
     scene: THREE.Scene,
     params: {
@@ -31,8 +27,6 @@ export class Player extends MovingEntity<PlayerController> {
       params.position ?? new THREE.Vector3(0, 0, 0),
       params.rotation ?? new THREE.Euler(0, 0, 0)
     );
-    this.controller = new PlayerController(this.camera, this.controls);
-    this.setupControlsListener();
   }
 
   setupPlayer(
@@ -94,40 +88,9 @@ export class Player extends MovingEntity<PlayerController> {
     return this.controls.object.position.clone();
   }
 
-  setupControlsListener() {
-    document.body.addEventListener("click", () => this.controls.lock());
-
-    window.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "x") {
-        this.toggleMode();
-      }
-    });
-  }
-
-  toggleMode() {
-    this.mode =
-      this.mode === PlayerModeEnum.Train
-        ? PlayerModeEnum.FreeCam
-        : PlayerModeEnum.Train;
-    console.log(`Switched mode to ${this.mode}`);
-  }
-
-  public computeControllerIntent(): MovementIntentEnum {
-    if (this.mode === PlayerModeEnum.FreeCam) {
-      return this.controller.computeInputIntent();
-    }
-    return {} as MovementIntentEnum;
-  }
-
-  public applyIntent(intent: MovementIntentEnum, delta: number) {
-    if (this.mode === PlayerModeEnum.FreeCam) {
-      this.controls.object.position.add(
-        intent.direction.clone().multiplyScalar(intent.speed * delta)
-      );
-    }
-  }
-
-  isOnTrain(): boolean {
-    return this.mode === PlayerModeEnum.Train;
+  public applyIntent(intent: MovementIntent, delta: number) {
+    this.controls.object.position.add(
+      intent.direction.clone().multiplyScalar(intent.speed * delta)
+    );
   }
 }

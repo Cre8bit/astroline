@@ -1,16 +1,18 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
-import type { MovementIntentEnum } from "./enums/mouvementIntentEnum";
 import { Controller } from "./controller";
+import type { MovementIntent } from "../core/interfaces/movementIntent";
+import { PlayerModeEnum } from "../core/enums/playerModeEnum";
 
-export class PlayerController extends Controller{
+export class PlayerController extends Controller {
   private readonly controls: PointerLockControls;
   private readonly camera: THREE.PerspectiveCamera;
+  private mode: PlayerModeEnum = PlayerModeEnum.FreeCam;
   private keysPressed: { [key: string]: boolean } = {};
   private readonly baseSpeed: number = 40;
   private readonly maxSpeed: number = 100;
   private moveSpeed: number = this.baseSpeed;
-  
+
   constructor(camera: THREE.PerspectiveCamera, controls: PointerLockControls) {
     super();
     this.camera = camera;
@@ -19,15 +21,28 @@ export class PlayerController extends Controller{
   }
 
   private setupListeners() {
+    document.body.addEventListener("click", () => this.controls.lock());
+    
     window.addEventListener("keydown", (e) => {
       this.keysPressed[e.key.toLowerCase()] = true;
+
+      if (e.key.toLowerCase() === "x") {
+        this.toggleMode();
+      }
     });
     window.addEventListener("keyup", (e) => {
       this.keysPressed[e.key.toLowerCase()] = false;
     });
   }
 
-  public computeInputIntent(): MovementIntentEnum {
+  public computeIntent(): MovementIntent {
+    if (this.mode !== PlayerModeEnum.FreeCam) {
+      return {
+        direction: new THREE.Vector3(),
+        targetRotation: this.controls.object.quaternion.clone(),
+        speed: 0,
+      };
+    }
     if (this.keysPressed["shift"]) {
       this.moveSpeed = this.maxSpeed;
     } else {
@@ -74,7 +89,17 @@ export class PlayerController extends Controller{
     };
   }
 
-  public isShiftPressed(): boolean {
+  public isBoosting(): boolean {
     return !!this.keysPressed["shift"];
+  }
+  toggleMode() {
+    this.mode =
+      this.mode === PlayerModeEnum.Train
+        ? PlayerModeEnum.FreeCam
+        : PlayerModeEnum.Train;
+    console.log(`Switched mode to ${this.mode}`);
+  }
+  getMode(): PlayerModeEnum {
+    return this.mode;
   }
 }

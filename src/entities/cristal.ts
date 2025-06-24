@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Entity } from "../core/entity";
+import { Entity } from "./entity";
 
 export class Cristal extends Entity {
   constructor(
@@ -12,4 +12,5 @@ export class Cristal extends Entity {
   ) {
     super(scene, params);
   }
+  public applyIntent(): void {}
 }

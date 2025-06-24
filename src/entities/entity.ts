@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MovementIntentEnum } from "../controller/enums/mouvementIntentEnum";
+import type { MovementIntent } from "../core/interfaces/movementIntent";
 
 export abstract class Entity {
   public object: THREE.Object3D;
@@ -115,7 +115,7 @@ export abstract class Entity {
       }
     }
   }
-  public abstract applyIntent(intent: MovementIntentEnum, delta: number): void;
+  public abstract applyIntent(intent: MovementIntent, delta: number): void;
   dispose(): void {
     this.scene.remove(this.object);
   }

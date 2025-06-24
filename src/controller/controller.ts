@@ -1,5 +1,5 @@
-import type { MovementIntentEnum } from "./enums/mouvementIntentEnum";
+import type { MovementIntent } from "../core/interfaces/movementIntent";
 
 export abstract class Controller {
-public abstract computeInputIntent(): MovementIntentEnum;
+  public abstract computeIntent(): MovementIntent;
 }

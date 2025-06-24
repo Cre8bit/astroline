@@ -6,6 +6,10 @@ import { Cristal } from "./entities/cristal";
 import { TrainHead } from "./entities/trainHead";
 import { GLBModelLoader } from "./core/modelLoader";
 import * as THREE from "three";
+import { PlayerController } from "./controller/playerController";
+import { TrainController } from "./controller/trainController";
+import { ControllerManager } from "./controller/controllerManager";
+import { GameManager } from "./core/gameManager";
 
 //Player coordinates HUD
 const hud = document.getElementById("hud-coordinates")!;
@@ -26,7 +30,6 @@ const trainHeadModel = await GLBModelLoader.load(
 //Setup scene and lighting
 const sceneManager = new SceneManager();
 sceneManager.setupScene();
-
 SetupSpaceLighting(sceneManager.scene);
 const starfield = new Starfield(sceneManager.scene);
 
@@ -37,32 +40,52 @@ const player = new Player(sceneManager.scene, {
 });
 
 //Setup entities
-const moon1 = new Moon(sceneManager.scene, { object: moonModel.clone(), scale: 0.5 });
+const moon1 = new Moon(sceneManager.scene, {
+  object: moonModel.clone(),
+  scale: 0.5,
+});
 const cristal = new Cristal(sceneManager.scene, { object: cristalModel });
-const trainHead = new TrainHead(sceneManager.scene, player, {
+const trainHead = new TrainHead(sceneManager.scene, {
   object: trainHeadModel,
   position: [0, 40, 0],
 });
 
+// Create controllers
+const playerController = new PlayerController(player.camera, player.controls);
+const trainController = new TrainController();
+
+// Bind controllers
+const controllerManager = new ControllerManager();
+controllerManager.bind(player, playerController);
+controllerManager.bind(trainHead, trainController);
+
+// Game manager to orchestrate bindings
+const gameManager = new GameManager([player], [trainHead], controllerManager);
+gameManager.bindPlayerToTrain(player, trainHead);
 
 function animate(): void {
   requestAnimationFrame(animate);
 
-  const currentFrameTime = performance.now();
-  const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
-  lastFrameTime = currentFrameTime;
-  fpsCounter.textContent = `FPS: ${fps}`;
-  
-  let playerIntent = player.computeControllerIntent();
-  let trainIntent = trainHead.computeControllerIntent();
+  // Update scene and entities
   const delta = clock.getDelta();
-  player.applyIntent(playerIntent, delta);
-  trainHead.applyIntent(trainIntent, delta);
 
+  gameManager.update();
+
+ const intents = controllerManager.computeAllIntents();
+  for (const [entity, intent] of intents.entries()) {
+    entity.applyIntent(intent, delta);
+  }
+
+  // Update player position and camera
   const playerPosition = player.getPlayerPosition();
   hud.textContent = `X: ${playerPosition.x.toFixed(
     2
   )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
+  // Update FPS counter
+  const currentFrameTime = performance.now();
+  const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
+  lastFrameTime = currentFrameTime;
+  fpsCounter.textContent = `FPS: ${fps}`;
 
   sceneManager.renderer.render(sceneManager.scene, player.camera);
 }

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Entity } from "../core/entity";
+import { Entity } from "./entity";
 
 export class Moon extends Entity {
   constructor(
@@ -14,4 +14,5 @@ export class Moon extends Entity {
     this.mass = 100;
     this.isStatic = true;
   }
+  public applyIntent(): void {}
 }

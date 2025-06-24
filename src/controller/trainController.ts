@@ -1,56 +1,38 @@
 import * as THREE from "three";
-import type { Player } from "../entities/player";
 import { Controller } from "./controller";
-import type { MovementIntentEnum } from "./enums/mouvementIntentEnum";
+import type { MovementIntent } from "../core/interfaces/movementIntent";
 
 export class TrainController extends Controller {
-  private readonly player: Player;
-  private readonly baseSpeed: number = 4;
-  private readonly maxSpeed: number = 10;
-  private moveSpeed: number = this.baseSpeed;
-  private stableDirection: THREE.Vector3 = new THREE.Vector3();
-  private lastIntent: MovementIntentEnum = {
-    direction: new THREE.Vector3(),
-    targetRotation: new THREE.Quaternion(),
-    speed: this.moveSpeed,
-  };
+  private stableDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
+  private moveSpeed = 4;
+  private readonly baseSpeed = 4;
+  private readonly maxSpeed = 10;
 
-  constructor(player: Player) {
-    super();
-    this.player = player;
+  private boost = false;
+
+  setBoost(state: boolean) {
+    this.boost = state;
   }
 
-  computeInputIntent(): MovementIntentEnum {
-    if (this.player.isOnTrain()) {
-      const cameraForward = new THREE.Vector3();
-      this.player.camera.getWorldDirection(cameraForward).normalize();
+  setLookDirection(dir: THREE.Vector3) {
+    this.stableDirection.lerp(dir, 0.1).normalize();
+  }
 
-      const targetSpeed = this.player.controller.isShiftPressed()
-        ? this.maxSpeed
-        : this.baseSpeed;
+  computeIntent(): MovementIntent {
+    const targetSpeed = this.boost ? this.maxSpeed : this.baseSpeed;
+    this.moveSpeed = THREE.MathUtils.lerp(this.moveSpeed, targetSpeed, 0.05);
 
-      this.moveSpeed = THREE.MathUtils.lerp(this.moveSpeed, targetSpeed, 0.05);
+    const dir = this.stableDirection.clone();
+    const yaw = Math.atan2(dir.x, dir.z);
+    const pitch = Math.asin(-dir.y);
+    const targetQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(pitch, yaw, 0, "YXZ")
+    );
 
-      if (!this.stableDirection) {
-        this.stableDirection = cameraForward.clone();
-      } else {
-        this.stableDirection.lerp(cameraForward, 0.1).normalize();
-      }
-
-      const direction = this.stableDirection.clone();
-
-      const yaw = Math.atan2(direction.x, direction.z);
-      const pitch = Math.asin(-direction.y);
-
-      const targetEuler = new THREE.Euler(pitch, yaw, 0, "YXZ");
-      const targetQuat = new THREE.Quaternion().setFromEuler(targetEuler);
-
-      this.lastIntent = {
-        direction: direction,
-        targetRotation: targetQuat,
-        speed: this.moveSpeed,
-      };
-    }
-    return this.lastIntent;
+    return {
+      direction: dir,
+      targetRotation: targetQuat,
+      speed: this.moveSpeed,
+    };
   }
 }
