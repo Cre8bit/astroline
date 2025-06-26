@@ -10,6 +10,7 @@ import { PlayerController } from "./controller/playerController";
 import { TrainController } from "./controller/trainController";
 import { ControllerManager } from "./controller/controllerManager";
 import { GameManager } from "./core/gameManager";
+import { IntentManager } from "./core/intentManager";
 
 //Player coordinates HUD
 const hud = document.getElementById("hud-coordinates")!;
@@ -59,22 +60,17 @@ const controllerManager = new ControllerManager();
 controllerManager.bind(player, playerController);
 controllerManager.bind(trainHead, trainController);
 
-// Game manager to orchestrate bindings
-const gameManager = new GameManager([player], [trainHead], controllerManager);
+// Game manager
+const intentManager = new IntentManager();
+const gameManager = new GameManager([player], [trainHead], controllerManager, intentManager);
 gameManager.bindPlayerToTrain(player, trainHead);
 
 function animate(): void {
   requestAnimationFrame(animate);
 
-  // Update scene and entities
   const delta = clock.getDelta();
 
-  gameManager.update();
-
- const intents = controllerManager.computeAllIntents();
-  for (const [entity, intent] of intents.entries()) {
-    entity.applyIntent(intent, delta);
-  }
+  gameManager.update(delta);
 
   // Update player coordinates HUD
   const playerPosition = player.getPlayerPosition();

@@ -1,6 +1,5 @@
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import * as THREE from "three";
-import type { MovementIntent } from "../core/interfaces/movementIntent";
 import { Entity } from "./entity";
 
 export class Player extends Entity {
@@ -105,14 +104,7 @@ export class Player extends Entity {
     return this.controls.object.position.clone();
   }
 
-  public applyIntent(intent: MovementIntent, delta: number): void {
-    const displacement = intent.direction
-      .clone()
-      .multiplyScalar(intent.speed * delta);
-    this.addToPosition(displacement);
-
-    this.setRotation(intent.targetRotation);
-
-    this.updateObjectTransform();
-  }
+  getPlayerRotation(): THREE.Quaternion {
+  return this.controls.object.quaternion.clone();
+}
 }

@@ -1,4 +1,3 @@
-import type { MovementIntent } from "../core/interfaces/movementIntent";
 import * as THREE from "three";
 import { Entity } from "./entity";
 
@@ -29,15 +28,5 @@ export class TrainHead extends Entity {
     } else if (Array.isArray(offset)) {
       this.riderlocalOffset.set(offset[0] ?? 0, offset[1] ?? 0, offset[2] ?? 0);
     }
-  }
-  public applyIntent(intent: MovementIntent, delta: number): void {
-    const displacement = intent.direction
-      .clone()
-      .multiplyScalar(intent.speed * delta);
-    this.addToPosition(displacement);
-
-    this.setRotation(intent.targetRotation);
-
-    this.updateObjectTransform();
   }
 }
