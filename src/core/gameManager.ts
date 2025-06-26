@@ -37,7 +37,7 @@ export class GameManager {
             const targetPos = boundTrain.getRiderWorldPosition();
             const currentPos = player.getPlayerPosition();
             const smoothedPos = currentPos.lerp(targetPos, 0.1);
-            player.setPlayerPosition(smoothedPos);
+            player.setPosition(smoothedPos);
 
             if (trainController && trainController instanceof TrainController) {
               const camForward = new THREE.Vector3();

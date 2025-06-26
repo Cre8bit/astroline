@@ -9,7 +9,7 @@ export class TrainHead extends Entity {
     params: {
       object: THREE.Object3D;
       position?: THREE.Vector3 | [number, number, number];
-      rotation?: THREE.Euler | [number, number, number];
+      rotation?: THREE.Euler | THREE.Quaternion | [number, number, number];
       scale?: THREE.Vector3 | number;
       riderOffset?: THREE.Vector3 | [number, number, number];
     }
@@ -34,7 +34,10 @@ export class TrainHead extends Entity {
     const displacement = intent.direction
       .clone()
       .multiplyScalar(intent.speed * delta);
-    this.object.position.add(displacement);
-    this.object.quaternion.slerp(intent.targetRotation, 0.1);
+    this.addToPosition(displacement);
+
+    this.setRotation(intent.targetRotation);
+
+    this.updateObjectTransform();
   }
 }

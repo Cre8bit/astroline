@@ -6,16 +6,18 @@ import { Entity } from "./entity";
 export class Player extends Entity {
   public controls: PointerLockControls;
   public camera: THREE.PerspectiveCamera;
+
   constructor(
     scene: THREE.Scene,
     params: {
       object?: THREE.Object3D;
       position?: THREE.Vector3 | [number, number, number];
-      rotation?: THREE.Euler | [number, number, number];
+      rotation?: THREE.Euler | THREE.Quaternion | [number, number, number];
       scale?: THREE.Vector3 | number;
     } = {}
   ) {
     super(scene, params);
+
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
@@ -23,85 +25,94 @@ export class Player extends Entity {
       1000
     );
     this.controls = new PointerLockControls(this.camera, document.body);
-    this.setupPlayer(
-      params.position ?? new THREE.Vector3(0, 0, 0),
-      params.rotation ?? new THREE.Euler(0, 0, 0)
-    );
+
+    this.syncControlsWithEntity();
   }
 
-  setupPlayer(
-    position: THREE.Vector3 | [number, number, number],
-    rotation: THREE.Euler | [number, number, number]
-  ) {
-    if (rotation instanceof THREE.Euler) {
-      this.setPlayerRotation(rotation);
-    } else if (Array.isArray(rotation)) {
-      this.setPlayerRotation(
-        rotation[0] ?? 0,
-        rotation[1] ?? 0,
-        rotation[2] ?? 0
-      );
-    }
-    if (Array.isArray(position)) {
-      this.setPlayerPosition(position[0], position[1], position[2]);
-    } else {
-      this.setPlayerPosition(position || new THREE.Vector3(0, 0, 0));
-    }
+  private syncControlsWithEntity() {
+    this.syncControlsWithEntityPosition();
+    this.syncControlsWithEntityRotation();
   }
-  setPlayerPosition(position: THREE.Vector3): void;
-  setPlayerPosition(x: number, y: number, z: number): void;
-  setPlayerPosition(
+  private syncControlsWithEntityRotation(): void {
+    this.controls.object.quaternion.copy(this.rotation);
+    this.controls.object.rotation.setFromQuaternion(this.rotation);
+  }
+  private syncControlsWithEntityPosition(): void {
+    this.controls.object.position.copy(this.position);
+  }
+
+  override setPosition(position: THREE.Vector3): void;
+  override setPosition(x: number, y: number, z: number): void;
+  override setPosition(
     arg1: THREE.Vector3 | number,
     arg2?: number,
     arg3?: number
   ): void {
     if (arg1 instanceof THREE.Vector3) {
-      this.controls.object.position.copy(arg1);
+      super.setPosition(arg1);
     } else if (
       typeof arg1 === "number" &&
       typeof arg2 === "number" &&
       typeof arg3 === "number"
     ) {
-      this.controls.object.position.set(arg1, arg2, arg3);
-      this.setObjectPosition(
-        this.controls.object.position.clone().sub(new THREE.Vector3(0, 1.8, 0))
-      );
+      super.setPosition(arg1, arg2, arg3);
     }
+    this.syncControlsWithEntityPosition();
   }
 
-  setPlayerRotation(rotation: THREE.Euler): void;
-  setPlayerRotation(yaw: number, pitch: number, roll: number): void;
-  setPlayerRotation(
-    arg1: THREE.Euler | number,
+  override addToPosition(position: THREE.Vector3): void;
+  override addToPosition(x: number, y: number, z: number): void;
+  override addToPosition(
+    arg1: THREE.Vector3 | number,
+    arg2?: number,
+    arg3?: number
+  ): void {
+    if (arg1 instanceof THREE.Vector3) {
+      super.addToPosition(arg1);
+    } else if (
+      typeof arg1 === "number" &&
+      typeof arg2 === "number" &&
+      typeof arg3 === "number"
+    ) {
+      super.addToPosition(arg1, arg2, arg3);
+    }
+    this.syncControlsWithEntityPosition();
+  }
+
+  override setRotation(rotation: THREE.Euler): void;
+  override setRotation(rotation: THREE.Quaternion): void;
+  override setRotation(x: number, y: number, z: number): void;
+  override setRotation(
+    arg1: THREE.Euler | THREE.Quaternion | number,
     arg2?: number,
     arg3?: number
   ): void {
     if (arg1 instanceof THREE.Euler) {
-      this.controls.object.rotation.copy(arg1);
+      super.setRotation(arg1);
+    } else if (arg1 instanceof THREE.Quaternion) {
+      super.setRotation(arg1);
     } else if (
       typeof arg1 === "number" &&
       typeof arg2 === "number" &&
       typeof arg3 === "number"
     ) {
-      this.controls.object.rotation.set(arg1, arg2, arg3);
-      this.setObjectRotation(this.controls.object.rotation.clone());
+      super.setRotation(arg1, arg2, arg3);
     }
+    this.syncControlsWithEntityRotation();
   }
 
   getPlayerPosition(): THREE.Vector3 {
     return this.controls.object.position.clone();
   }
 
-  public applyIntent(intent: MovementIntent, delta: number) {
-    const distance = intent.direction
+  public applyIntent(intent: MovementIntent, delta: number): void {
+    const displacement = intent.direction
       .clone()
       .multiplyScalar(intent.speed * delta);
-    this.controls.object.position.add(distance);
-    this.setObjectPosition(
-      this.controls.object.position.clone().sub(new THREE.Vector3(0, 1.8, 0))
-    );
+    this.addToPosition(displacement);
 
-    this.controls.object.quaternion.slerp(intent.targetRotation, 0.1);
-    this.setObjectRotation(this.controls.object.rotation.clone());
+    this.setRotation(intent.targetRotation);
+
+    this.updateObjectTransform();
   }
 }
