@@ -63,6 +63,9 @@ export class Player extends Entity {
       typeof arg3 === "number"
     ) {
       this.controls.object.position.set(arg1, arg2, arg3);
+      this.setObjectPosition(
+        this.controls.object.position.clone().sub(new THREE.Vector3(0, 1.8, 0))
+      );
     }
   }
 
@@ -81,6 +84,7 @@ export class Player extends Entity {
       typeof arg3 === "number"
     ) {
       this.controls.object.rotation.set(arg1, arg2, arg3);
+      this.setObjectRotation(this.controls.object.rotation.clone());
     }
   }
 
@@ -89,8 +93,15 @@ export class Player extends Entity {
   }
 
   public applyIntent(intent: MovementIntent, delta: number) {
-    this.controls.object.position.add(
-      intent.direction.clone().multiplyScalar(intent.speed * delta)
+    const distance = intent.direction
+      .clone()
+      .multiplyScalar(intent.speed * delta);
+    this.controls.object.position.add(distance);
+    this.setObjectPosition(
+      this.controls.object.position.clone().sub(new THREE.Vector3(0, 1.8, 0))
     );
+
+    this.controls.object.quaternion.slerp(intent.targetRotation, 0.1);
+    this.setObjectRotation(this.controls.object.rotation.clone());
   }
 }

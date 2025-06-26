@@ -1,17 +1,17 @@
-import type { MovingEntity } from "../core/movingEntity";
 import type { Controller } from "./controller";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
+import type { Entity } from "../entities/entity";
 
 export class ControllerManager {
-  private readonly bindings = new Map<MovingEntity<Controller>, Controller>();
+  private readonly bindings = new Map<Entity, Controller>();
 
-  bind<T extends Controller>(entity: MovingEntity<T>, controller: T) {
+  bind<T extends Controller>(entity: Entity, controller: T) {
     this.bindings.set(entity, controller);
   }
-  getController(entity: MovingEntity<Controller>): Controller | undefined {
+  getController(entity: Entity): Controller | undefined {
     return this.bindings.get(entity);
   }
-  computeAllIntents(): Map<MovingEntity<Controller>, MovementIntent> {
+  computeAllIntents(): Map<Entity, MovementIntent> {
     const result = new Map();
     for (const [entity, controller] of this.bindings.entries()) {
       result.set(entity, controller.computeIntent());

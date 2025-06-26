@@ -33,13 +33,12 @@ sceneManager.setupScene();
 SetupSpaceLighting(sceneManager.scene);
 const starfield = new Starfield(sceneManager.scene);
 
-//Setup player
+//Setup entities
 const player = new Player(sceneManager.scene, {
   position: [0, 40, -10],
   rotation: [0, Math.PI, 0],
 });
 
-//Setup entities
 const moon1 = new Moon(sceneManager.scene, {
   object: moonModel.clone(),
   scale: 0.5,
@@ -48,6 +47,7 @@ const cristal = new Cristal(sceneManager.scene, { object: cristalModel });
 const trainHead = new TrainHead(sceneManager.scene, {
   object: trainHeadModel,
   position: [0, 40, 0],
+  riderOffset: [0, 1.8, 0],
 });
 
 // Create controllers
@@ -76,7 +76,7 @@ function animate(): void {
     entity.applyIntent(intent, delta);
   }
 
-  // Update player position and camera
+  // Update player coordinates HUD
   const playerPosition = player.getPlayerPosition();
   hud.textContent = `X: ${playerPosition.x.toFixed(
     2

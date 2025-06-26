@@ -7,6 +7,7 @@ export class Cristal extends Entity {
     params: {
       object: THREE.Object3D;
       position?: THREE.Vector3 | [number, number, number];
+      rotation?: THREE.Euler | [number, number, number];
       scale?: THREE.Vector3 | number;
     }
   ) {
