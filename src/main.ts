@@ -52,7 +52,7 @@ const trainHead = new TrainHead(sceneManager.scene, {
 });
 
 // Create controllers
-const playerController = new PlayerController(player.camera, player.controls);
+const playerController = new PlayerController();
 const trainController = new TrainController();
 
 // Bind controllers
@@ -73,7 +73,7 @@ function animate(): void {
   gameManager.update(delta);
 
   // Update player coordinates HUD
-  const playerPosition = player.getPlayerPosition();
+  const playerPosition = player.getPosition();
   hud.textContent = `X: ${playerPosition.x.toFixed(
     2
   )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
@@ -83,12 +83,12 @@ function animate(): void {
   lastFrameTime = currentFrameTime;
   fpsCounter.textContent = `FPS: ${fps}`;
 
-  sceneManager.renderer.render(sceneManager.scene, player.camera);
+  sceneManager.renderer.render(sceneManager.scene, playerController.getCamera());
 }
 animate();
 
 window.addEventListener("resize", () => {
   sceneManager.resizeRendererToDisplaySize();
-  player.camera.aspect = window.innerWidth / window.innerHeight;
-  player.camera.updateProjectionMatrix();
+  playerController.getCamera().aspect = window.innerWidth / window.innerHeight;
+  playerController.getCamera().updateProjectionMatrix();
 });

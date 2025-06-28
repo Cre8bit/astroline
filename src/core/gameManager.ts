@@ -44,6 +44,15 @@ export class GameManager {
     for (const [entity, intent] of allIntents.entries()) {
       entity.applyIntent(intent, delta);
     }
+
+    // 5. Sync player controllers with player positions
+    for (const player of this.players) {
+      const playerController = this.controllerManager.getController(player);
+      if (!(playerController instanceof PlayerController)) continue;
+
+      playerController.syncWithPlayer(player);
+
+    }
   }
 
   private processPlayerTrainBindings(delta: number) {
@@ -61,12 +70,12 @@ export class GameManager {
       if (!(trainController instanceof TrainController)) continue;
 
       const camForward = new THREE.Vector3();
-      player.camera.getWorldDirection(camForward).normalize();
+      playerController.getCamera().getWorldDirection(camForward).normalize();
       trainController.setLookDirection(camForward);
       trainController.setBoost(playerController.isBoosting());
 
       const riderTarget = boundTrain.getRiderWorldPosition();
-      const currentPos = player.getPlayerPosition();
+      const currentPos = player.getPosition();
       const followPos = currentPos.clone().lerp(riderTarget, 0.1);
 
       const direction = followPos.clone().sub(currentPos);
@@ -74,7 +83,7 @@ export class GameManager {
 
       this.intentManager.setOverrideIntent(player, {
         direction: direction.normalize(),
-        targetRotation: player.getPlayerRotation(),
+        targetRotation: playerController.getControls().object.quaternion.clone(),
         speed: speed,
       });
     }
