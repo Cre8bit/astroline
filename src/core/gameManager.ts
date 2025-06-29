@@ -2,10 +2,11 @@ import { Player } from "../entities/player";
 import type { TrainHead } from "../entities/trainHead";
 import * as THREE from "three";
 import { PlayerModeEnum } from "./enums/playerMode.enum";
-import type { ControllerManager } from "../controller/controllerManager";
-import { PointerLockCameraController } from "../controller/pointerLockCameraController";
+import type { ControllerManager } from "./controllerManager";
 import { TrainController } from "../controller/trainController";
 import type { IntentManager } from "./intentManager";
+import { CameraController } from "../controller/base/cameraController";
+import { PlayerController } from "../controller/base/playerController";
 
 export class GameManager {
   private readonly playerTrainBindings = new Map<Player, TrainHead>();
@@ -48,8 +49,7 @@ export class GameManager {
     // 5. Sync player controllers with player positions
     for (const player of this.players) {
       const playerController = this.controllerManager.getController(player);
-      if (!(playerController instanceof PointerLockCameraController)) continue;
-
+      if (!(playerController instanceof CameraController)) continue;
       playerController.syncWithEntity(player);
     }
   }
@@ -57,7 +57,7 @@ export class GameManager {
   private processPlayerTrainBindings(delta: number) {
     for (const player of this.players) {
       const playerController = this.controllerManager.getController(player);
-      if (!(playerController instanceof PointerLockCameraController)) continue;
+      if (!(playerController instanceof PlayerController)) continue;
 
       const isOnTrain = playerController.getMode() === PlayerModeEnum.Train;
       if (!isOnTrain) continue;
@@ -68,8 +68,7 @@ export class GameManager {
       const trainController = this.controllerManager.getController(boundTrain);
       if (!(trainController instanceof TrainController)) continue;
 
-      const camForward = new THREE.Vector3();
-      playerController.getCamera().getWorldDirection(camForward).normalize();
+      const camForward = playerController.getForwardDirection();
       trainController.setLookDirection(camForward);
       trainController.setBoost(playerController.isBoosting());
 

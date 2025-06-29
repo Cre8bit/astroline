@@ -1,5 +1,5 @@
-import type { Controller } from "./controller";
-import type { MovementIntent } from "../core/interfaces/movementIntent";
+import type { Controller } from "../controller/base/controller";
+import type { MovementIntent } from "./interfaces/movementIntent";
 import type { Entity } from "../entities/entity";
 
 export class ControllerManager {

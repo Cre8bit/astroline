@@ -8,7 +8,7 @@ import { GLBModelLoader } from "./core/modelLoader";
 import * as THREE from "three";
 import { PointerLockCameraController } from "./controller/pointerLockCameraController";
 import { TrainController } from "./controller/trainController";
-import { ControllerManager } from "./controller/controllerManager";
+import { ControllerManager } from "./core/controllerManager";
 import { GameManager } from "./core/gameManager";
 import { IntentManager } from "./core/intentManager";
 

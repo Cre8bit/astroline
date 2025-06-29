@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Controller } from "./controller";
+import { Controller } from "./base/controller";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
 
 export class TrainController extends Controller {
@@ -7,7 +7,6 @@ export class TrainController extends Controller {
   private moveSpeed = 4;
   private readonly baseSpeed = 4;
   private readonly maxSpeed = 10;
-
   private boost = false;
 
   setBoost(state: boolean) {

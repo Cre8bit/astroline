@@ -1,11 +1,14 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
-import { CameraController } from "./cameraController";
+import { CameraController } from "./base/cameraController";
 import { PlayerModeEnum } from "../core/enums/playerMode.enum";
+import { Player } from "../entities/player";
 
-export class PointerLockCameraController extends CameraController<THREE.PerspectiveCamera, PointerLockControls> {
-  private mode: PlayerModeEnum = PlayerModeEnum.FreeCam;
+export class PointerLockCameraController extends CameraController<
+  THREE.PerspectiveCamera,
+  PointerLockControls
+> {
   private keysPressed: { [key: string]: boolean } = {};
   private readonly baseSpeed: number = 40;
   private readonly maxSpeed: number = 100;
@@ -93,14 +96,9 @@ export class PointerLockCameraController extends CameraController<THREE.Perspect
   public isBoosting(): boolean {
     return !!this.keysPressed["shift"];
   }
-  private toggleMode() {
-    this.mode =
-      this.mode === PlayerModeEnum.Train
-        ? PlayerModeEnum.FreeCam
-        : PlayerModeEnum.Train;
-    console.log(`Switched mode to ${this.mode}`);
-  }
-  public getMode(): PlayerModeEnum {
-    return this.mode;
+  public getForwardDirection(): THREE.Vector3 {
+    const camForward = new THREE.Vector3();
+    this.getCamera().getWorldDirection(camForward).normalize();
+    return camForward;
   }
 }
