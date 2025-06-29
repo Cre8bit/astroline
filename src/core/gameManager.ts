@@ -1,9 +1,9 @@
 import { Player } from "../entities/player";
 import type { TrainHead } from "../entities/trainHead";
 import * as THREE from "three";
-import { PlayerModeEnum } from "./enums/playerModeEnum";
+import { PlayerModeEnum } from "./enums/playerMode.enum";
 import type { ControllerManager } from "../controller/controllerManager";
-import { PlayerController } from "../controller/playerController";
+import { PointerLockCameraController } from "../controller/pointerLockCameraController";
 import { TrainController } from "../controller/trainController";
 import type { IntentManager } from "./intentManager";
 
@@ -48,17 +48,16 @@ export class GameManager {
     // 5. Sync player controllers with player positions
     for (const player of this.players) {
       const playerController = this.controllerManager.getController(player);
-      if (!(playerController instanceof PlayerController)) continue;
+      if (!(playerController instanceof PointerLockCameraController)) continue;
 
-      playerController.syncWithPlayer(player);
-
+      playerController.syncWithEntity(player);
     }
   }
 
   private processPlayerTrainBindings(delta: number) {
     for (const player of this.players) {
       const playerController = this.controllerManager.getController(player);
-      if (!(playerController instanceof PlayerController)) continue;
+      if (!(playerController instanceof PointerLockCameraController)) continue;
 
       const isOnTrain = playerController.getMode() === PlayerModeEnum.Train;
       if (!isOnTrain) continue;
@@ -83,7 +82,9 @@ export class GameManager {
 
       this.intentManager.setOverrideIntent(player, {
         direction: direction.normalize(),
-        targetRotation: playerController.getControls().object.quaternion.clone(),
+        targetRotation: playerController
+          .getControls()
+          .object.quaternion.clone(),
         speed: speed,
       });
     }

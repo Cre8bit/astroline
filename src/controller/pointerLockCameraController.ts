@@ -1,13 +1,10 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
-import { Controller } from "./controller";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
-import { PlayerModeEnum } from "../core/enums/playerModeEnum";
-import type { Player } from "../entities/player";
+import { CameraController } from "./cameraController";
+import { PlayerModeEnum } from "../core/enums/playerMode.enum";
 
-export class PlayerController extends Controller {
-  private readonly controls: PointerLockControls;
-  private readonly camera: THREE.PerspectiveCamera;
+export class PointerLockCameraController extends CameraController<THREE.PerspectiveCamera, PointerLockControls> {
   private mode: PlayerModeEnum = PlayerModeEnum.FreeCam;
   private keysPressed: { [key: string]: boolean } = {};
   private readonly baseSpeed: number = 40;
@@ -15,14 +12,13 @@ export class PlayerController extends Controller {
   private moveSpeed: number = this.baseSpeed;
 
   constructor() {
-    super();
-    this.camera = new THREE.PerspectiveCamera(
+    const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    this.controls = new PointerLockControls(this.camera, document.body);
+    super(camera, new PointerLockControls(camera, document.body));
     this.setupListeners();
   }
 
@@ -94,12 +90,6 @@ export class PlayerController extends Controller {
       speed: this.moveSpeed,
     };
   }
-  public getCamera(): THREE.PerspectiveCamera {
-    return this.camera;
-  }
-  public getControls(): PointerLockControls {
-    return this.controls;
-  }
   public isBoosting(): boolean {
     return !!this.keysPressed["shift"];
   }
@@ -110,13 +100,7 @@ export class PlayerController extends Controller {
         : PlayerModeEnum.Train;
     console.log(`Switched mode to ${this.mode}`);
   }
- public getMode(): PlayerModeEnum {
+  public getMode(): PlayerModeEnum {
     return this.mode;
-  }
-   public syncWithPlayer(player: Player): void {
-    this.controls.object.position.copy(player.getPosition());
-    const playerRotation = player.getRotation();
-    this.controls.object.quaternion.copy(playerRotation);
-    this.controls.object.rotation.setFromQuaternion(playerRotation);
   }
 }

@@ -244,7 +244,7 @@ export abstract class Entity {
     return new THREE.Euler().setFromQuaternion(this.rotation);
   }
 
-  public applyIntent(intent: MovementIntent, delta: number): void{
+  public applyIntent(intent: MovementIntent, delta: number): void {
     const displacement = intent.direction
       .clone()
       .multiplyScalar(intent.speed * delta);

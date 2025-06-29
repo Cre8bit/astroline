@@ -6,7 +6,7 @@ import { Cristal } from "./entities/cristal";
 import { TrainHead } from "./entities/trainHead";
 import { GLBModelLoader } from "./core/modelLoader";
 import * as THREE from "three";
-import { PlayerController } from "./controller/playerController";
+import { PointerLockCameraController } from "./controller/pointerLockCameraController";
 import { TrainController } from "./controller/trainController";
 import { ControllerManager } from "./controller/controllerManager";
 import { GameManager } from "./core/gameManager";
@@ -52,7 +52,7 @@ const trainHead = new TrainHead(sceneManager.scene, {
 });
 
 // Create controllers
-const playerController = new PlayerController();
+const playerController = new PointerLockCameraController();
 const trainController = new TrainController();
 
 // Bind controllers
@@ -62,7 +62,12 @@ controllerManager.bind(trainHead, trainController);
 
 // Game manager
 const intentManager = new IntentManager();
-const gameManager = new GameManager([player], [trainHead], controllerManager, intentManager);
+const gameManager = new GameManager(
+  [player],
+  [trainHead],
+  controllerManager,
+  intentManager
+);
 gameManager.bindPlayerToTrain(player, trainHead);
 
 function animate(): void {
@@ -83,7 +88,10 @@ function animate(): void {
   lastFrameTime = currentFrameTime;
   fpsCounter.textContent = `FPS: ${fps}`;
 
-  sceneManager.renderer.render(sceneManager.scene, playerController.getCamera());
+  sceneManager.renderer.render(
+    sceneManager.scene,
+    playerController.getCamera()
+  );
 }
 animate();
 
