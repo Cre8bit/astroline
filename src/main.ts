@@ -36,10 +36,9 @@ const starfield = new Starfield(sceneManager.scene);
 
 //Setup entities
 const player = new Player(sceneManager.scene, {
-  position: [0, 40, -10],
-  rotation: [0, Math.PI, 0],
+  position: [-30, 80, 0],
+  rotation: [0, -Math.PI/2, 0],
 });
-
 const moon1 = new Moon(sceneManager.scene, {
   object: moonModel.clone(),
   scale: 0.5,
@@ -47,7 +46,7 @@ const moon1 = new Moon(sceneManager.scene, {
 const cristal = new Cristal(sceneManager.scene, { object: cristalModel });
 const trainHead = new TrainHead(sceneManager.scene, {
   object: trainHeadModel,
-  position: [0, 40, 0],
+  position: [0, 80, 0],
   riderOffset: [0, 1.8, 0],
 });
 
@@ -75,8 +74,9 @@ function animate(): void {
 
   const delta = clock.getDelta();
 
+  
   gameManager.update(delta);
-
+  
   // Update player coordinates HUD
   const playerPosition = player.getPosition();
   hud.textContent = `X: ${playerPosition.x.toFixed(
@@ -87,11 +87,12 @@ function animate(): void {
   const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
   lastFrameTime = currentFrameTime;
   fpsCounter.textContent = `FPS: ${fps}`;
-
+  
   sceneManager.renderer.render(
     sceneManager.scene,
     playerController.getCamera()
   );
+  // debugger;
 }
 animate();
 

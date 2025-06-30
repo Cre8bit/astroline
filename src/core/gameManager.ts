@@ -25,6 +25,9 @@ export class GameManager {
     this.trains = trains;
     this.controllerManager = controllerManager;
     this.intentManager = intentManager;
+
+    // Sync cameras and controllers with the players positions
+    this.syncCameraControllersWithPlayers()
   }
 
   public update(delta: number): void {
@@ -47,11 +50,7 @@ export class GameManager {
     }
 
     // 5. Sync player controllers with player positions
-    for (const player of this.players) {
-      const playerController = this.controllerManager.getController(player);
-      if (!(playerController instanceof CameraController)) continue;
-      playerController.syncWithEntity(player);
-    }
+    this.syncCameraControllersWithPlayers();
   }
 
   private processPlayerTrainBindings(delta: number) {
@@ -89,6 +88,13 @@ export class GameManager {
     }
   }
 
+  private syncCameraControllersWithPlayers() {
+    for (const player of this.players) {
+      const playerController = this.controllerManager.getController(player);
+      if (!(playerController instanceof CameraController)) continue;
+      playerController.syncWithEntity(player);
+    }
+  }
   bindPlayerToTrain(player: Player, train: TrainHead) {
     this.playerTrainBindings.set(player, train);
     console.log(`Player bound to train`);
