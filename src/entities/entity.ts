@@ -2,12 +2,13 @@ import * as THREE from "three";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
 
 export abstract class Entity {
+  public name: string = "Entity";
   public position: THREE.Vector3;
   public rotation: THREE.Quaternion;
   public object: THREE.Object3D;
   protected scene: THREE.Scene;
   public mass: number = 1;
-  public isStatic: boolean = false;
+  public ignorePhysics: boolean = false;
   public localObjectPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   public localObjectRotation: THREE.Quaternion = new THREE.Quaternion();
   constructor(

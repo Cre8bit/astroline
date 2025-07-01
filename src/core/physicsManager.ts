@@ -83,7 +83,7 @@ export class PhysicsManager {
       const diff = moonPos.clone().sub(entityPos);
       const distanceSq = diff.lengthSq();
 
-      if (Math.sqrt(distanceSq) < 100) {
+      if (Math.sqrt(distanceSq) < 40) {
       continue;
       }
 

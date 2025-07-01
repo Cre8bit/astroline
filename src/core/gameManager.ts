@@ -1,30 +1,36 @@
 import { Player } from "../entities/player";
-import type { TrainHead } from "../entities/trainHead";
+import { TrainHead } from "../entities/trainHead";
 import * as THREE from "three";
 import { PlayerModeEnum } from "./enums/playerMode.enum";
 import type { ControllerManager } from "./controllerManager";
 import { TrainController } from "../controller/trainController";
-import type { IntentManager } from "./intentManager";
+import { IntentManager } from "./intentManager";
 import { CameraController } from "../controller/base/cameraController";
 import { PlayerController } from "../controller/base/playerController";
+import { PhysicsManager } from "./physicsManager";
+import { Entity } from "../entities/entity";
+import { Moon } from "../entities/moon";
 
 export class GameManager {
+  private readonly entities: Entity[];
   private readonly playerTrainBindings = new Map<Player, TrainHead>();
   private readonly players: Player[];
   private readonly trains: TrainHead[];
+  private readonly moons: Moon[] = [];
   private readonly controllerManager: ControllerManager;
   private readonly intentManager: IntentManager;
+  private readonly physicsManager: PhysicsManager;
 
-  constructor(
-    players: Player[],
-    trains: TrainHead[],
-    controllerManager: ControllerManager,
-    intentManager: IntentManager
-  ) {
-    this.players = players;
-    this.trains = trains;
+  constructor(entities: Entity[], controllerManager: ControllerManager) {
+    this.entities = entities;
+
+    this.players = entities.filter((e) => e instanceof Player) as Player[];
+    this.trains = entities.filter((e) => e instanceof TrainHead) as TrainHead[];
+    this.moons = entities.filter((e) => e instanceof Moon) as Moon[];
+
     this.controllerManager = controllerManager;
-    this.intentManager = intentManager;
+    this.intentManager = new IntentManager();
+    this.physicsManager = new PhysicsManager(this.moons);
 
     // Sync cameras and controllers with the players positions
     this.syncCameraControllersWithPlayers()
@@ -37,11 +43,12 @@ export class GameManager {
     const inputIntents = this.controllerManager.computeAllIntents();
     this.intentManager.setBaseIntents(inputIntents);
 
-    // 2. Override intents with game logic
-    this.processPlayerTrainBindings(delta);
+    // 2. Apply physics forces → overrideIntent
+    const resultIntents = this.physicsManager.applyPhysicsTo(this.entities, inputIntents);
+    this.intentManager.setOverrideIntents(resultIntents);
 
-    // 3. Apply physics forces → overrideIntent
-    // physicsEngine.applyTo(this.intentManager);
+     // 3. Override intents with game logic
+    this.processPlayerTrainBindings(delta);
 
     // 4. Apply final intent to each entity
     const allIntents = this.intentManager.getAllIntents();

@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { Entity } from "./entity";
 
 export class Player extends Entity {
+  public name: string = "Player";
+  public ignorePhysics: boolean = true;
   constructor(
     scene: THREE.Scene,
     params: {

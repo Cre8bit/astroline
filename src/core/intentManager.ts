@@ -17,7 +17,12 @@ export class IntentManager {
   setOverrideIntent(entity: Entity, override: MovementIntent): void {
     this.overrideIntents.set(entity, override);
   }
-
+  setOverrideIntents(intents: Map<Entity, MovementIntent>) {
+    this.overrideIntents.clear();
+    for (const [entity, intent] of intents.entries()) {
+      this.overrideIntents.set(entity, intent);
+    }
+  }
   getIntent(entity: Entity): MovementIntent {
     return this.overrideIntents.get(entity) ?? this.baseIntents.get(entity)!;
   }

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { Entity } from "./entity";
 
 export class TrainHead extends Entity {
+  public name: string = "TrainHead";
   private readonly riderlocalOffset = new THREE.Vector3(0, 1.8, 0);
   constructor(
     scene: THREE.Scene,
@@ -14,7 +15,7 @@ export class TrainHead extends Entity {
     }
   ) {
     super(scene, params);
-    this.mass = 10;
+    this.mass = 1;
     if (params.riderOffset) {
       this.setRiderOffset(params.riderOffset);
     }

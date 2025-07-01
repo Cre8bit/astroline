@@ -60,12 +60,9 @@ controllerManager.bind(player, playerController);
 controllerManager.bind(trainHead, trainController);
 
 // Game manager
-const intentManager = new IntentManager();
 const gameManager = new GameManager(
-  [player],
-  [trainHead],
+  [player, trainHead, moon1],
   controllerManager,
-  intentManager
 );
 gameManager.bindPlayerToTrain(player, trainHead);
 
