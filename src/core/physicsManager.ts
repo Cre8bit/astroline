@@ -1,13 +1,48 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
 import type { MovementIntent } from "./interfaces/movementIntent";
+import type { RayDebuggerManager } from "./rayDebuggerManager";
 import * as THREE from "three";
 
 export class PhysicsManager {
   private readonly moons: Moon[];
+  private rayDebugger?: RayDebuggerManager;
 
   constructor(moons: Moon[]) {
     this.moons = moons;
+  }
+
+  public setRayDebugger(rayDebugger: RayDebuggerManager): void {
+    this.rayDebugger = rayDebugger;
+
+    this.rayDebugger.setGroupConfig("gravity", {
+      color: 0xff0000,
+      scaleFactor: 10,
+      maxLength: 50,
+      headLength: undefined,
+      headWidth: undefined,
+      opacity: 0.8,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: 'g',
+      groupName: 'gravity',
+      description: 'Gravity debug visualization',
+      defaultEnabled: true
+    });
+  }
+
+  private updateDebugRay(entity: Entity, gravityForce: THREE.Vector3): void {
+    if (!this.rayDebugger) return;
+
+    const entityPos = entity.getPosition();
+
+    this.rayDebugger.setRay("gravity", entity.getId(), {
+      id: entity.getId(),
+      origin: entityPos,
+      direction: gravityForce.clone().normalize(),
+      magnitude: gravityForce.length(),
+    });
   }
 
   public applyPhysicsTo(
@@ -40,6 +75,9 @@ export class PhysicsManager {
   ): MovementIntent {
     const { gravityForce, targetRotation: gravityQuat } =
       this.processMoonAttraction(entity);
+
+    // Update debug visualization
+    this.updateDebugRay(entity, gravityForce);
 
     if (!baseIntent) {
       return {
@@ -84,13 +122,13 @@ export class PhysicsManager {
       const distanceSq = diff.lengthSq();
 
       if (Math.sqrt(distanceSq) < 40) {
-      continue;
+        continue;
       }
 
       if (distanceSq < minDistanceSq) {
-      minDistanceSq = distanceSq;
-      closestMoon = moon;
-      closestVector = diff.clone();
+        minDistanceSq = distanceSq;
+        closestMoon = moon;
+        closestVector = diff.clone();
       }
     }
 

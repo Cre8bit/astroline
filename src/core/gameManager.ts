@@ -10,6 +10,7 @@ import { PlayerController } from "../controller/base/playerController";
 import { PhysicsManager } from "./physicsManager";
 import { Entity } from "../entities/entity";
 import { Moon } from "../entities/moon";
+import { RayDebuggerManager } from "./rayDebuggerManager";
 
 export class GameManager {
   private readonly entities: Entity[];
@@ -20,8 +21,13 @@ export class GameManager {
   private readonly controllerManager: ControllerManager;
   private readonly intentManager: IntentManager;
   private readonly physicsManager: PhysicsManager;
+  private readonly rayDebugger: RayDebuggerManager;
 
-  constructor(entities: Entity[], controllerManager: ControllerManager) {
+  constructor(
+    entities: Entity[],
+    controllerManager: ControllerManager,
+    scene: THREE.Scene
+  ) {
     this.entities = entities;
 
     this.players = entities.filter((e) => e instanceof Player) as Player[];
@@ -32,8 +38,14 @@ export class GameManager {
     this.intentManager = new IntentManager();
     this.physicsManager = new PhysicsManager(this.moons);
 
+    this.rayDebugger = new RayDebuggerManager();
+    this.rayDebugger.setScene(scene);
+    this.rayDebugger.enable(true);
+
+    this.physicsManager.setRayDebugger(this.rayDebugger);
+
     // Sync cameras and controllers with the players positions
-    this.syncCameraControllersWithPlayers()
+    this.syncCameraControllersWithPlayers();
   }
 
   public update(delta: number): void {
@@ -44,10 +56,13 @@ export class GameManager {
     this.intentManager.setBaseIntents(inputIntents);
 
     // 2. Apply physics forces → overrideIntent
-    const resultIntents = this.physicsManager.applyPhysicsTo(this.entities, inputIntents);
+    const resultIntents = this.physicsManager.applyPhysicsTo(
+      this.entities,
+      inputIntents
+    );
     this.intentManager.setOverrideIntents(resultIntents);
 
-     // 3. Override intents with game logic
+    // 3. Override intents with game logic
     this.processPlayerTrainBindings(delta);
 
     // 4. Apply final intent to each entity
@@ -58,6 +73,14 @@ export class GameManager {
 
     // 5. Sync player controllers with player positions
     this.syncCameraControllersWithPlayers();
+  }
+
+  public enablePhysicsDebug(enabled: boolean = true): void {
+    this.rayDebugger.enable(enabled);
+  }
+
+  public getRayDebugger(): RayDebuggerManager {
+    return this.rayDebugger;
   }
 
   private processPlayerTrainBindings(delta: number) {

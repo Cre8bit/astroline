@@ -2,7 +2,8 @@ import * as THREE from "three";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
 
 export abstract class Entity {
-  public name: string = "Entity";
+  protected name: string = "Entity";
+  private id: string = crypto.randomUUID();
   public position: THREE.Vector3;
   public rotation: THREE.Quaternion;
   public object: THREE.Object3D;
@@ -257,5 +258,11 @@ export abstract class Entity {
   }
   dispose(): void {
     this.scene.remove(this.object);
+  }
+  getId(): string {
+    return this.id;
+  }
+  getName(): string {
+    return this.name;
   }
 }

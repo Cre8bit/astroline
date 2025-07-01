@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { Entity } from "./entity";
 
 export class Moon extends Entity {
-  public name: string = "Moon";
   public ignorePhysics: boolean = true;
   constructor(
     scene: THREE.Scene,
@@ -14,6 +13,7 @@ export class Moon extends Entity {
     }
   ) {
     super(scene, params);
+    this.name = "Moon";
     this.mass = 100;
   }
   public applyIntent(): void {}

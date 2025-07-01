@@ -10,7 +10,6 @@ import { PointerLockCameraController } from "./controller/pointerLockCameraContr
 import { TrainController } from "./controller/trainController";
 import { ControllerManager } from "./core/controllerManager";
 import { GameManager } from "./core/gameManager";
-import { IntentManager } from "./core/intentManager";
 
 //Player coordinates HUD
 const hud = document.getElementById("hud-coordinates")!;
@@ -37,7 +36,7 @@ const starfield = new Starfield(sceneManager.scene);
 //Setup entities
 const player = new Player(sceneManager.scene, {
   position: [-30, 80, 0],
-  rotation: [0, -Math.PI/2, 0],
+  rotation: [0, -Math.PI / 2, 0],
 });
 const moon1 = new Moon(sceneManager.scene, {
   object: moonModel.clone(),
@@ -63,6 +62,7 @@ controllerManager.bind(trainHead, trainController);
 const gameManager = new GameManager(
   [player, trainHead, moon1],
   controllerManager,
+  sceneManager.scene
 );
 gameManager.bindPlayerToTrain(player, trainHead);
 
@@ -71,9 +71,8 @@ function animate(): void {
 
   const delta = clock.getDelta();
 
-  
   gameManager.update(delta);
-  
+
   // Update player coordinates HUD
   const playerPosition = player.getPosition();
   hud.textContent = `X: ${playerPosition.x.toFixed(
@@ -84,7 +83,7 @@ function animate(): void {
   const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
   lastFrameTime = currentFrameTime;
   fpsCounter.textContent = `FPS: ${fps}`;
-  
+
   sceneManager.renderer.render(
     sceneManager.scene,
     playerController.getCamera()
