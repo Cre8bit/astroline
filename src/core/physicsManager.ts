@@ -25,14 +25,33 @@ export class PhysicsManager {
     });
 
     this.rayDebugger.registerGroupToggle({
-      key: 'g',
-      groupName: 'gravity',
-      description: 'Gravity debug visualization',
-      defaultEnabled: true
+      key: "g",
+      groupName: "gravity",
+      description: "Gravity debug visualization",
+      defaultEnabled: true,
+    });
+
+    this.rayDebugger.setGroupConfig("direction", {
+      color: 0x00ff00,
+      scaleFactor: 10,
+      maxLength: 30,
+      headLength: undefined,
+      headWidth: undefined,
+      opacity: 0.9,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: "h",
+      groupName: "direction",
+      description: "Entity direction debug visualization",
+      defaultEnabled: true,
     });
   }
 
-  private updateDebugRay(entity: Entity, gravityForce: THREE.Vector3): void {
+  private updateGravityDebugRay(
+    entity: Entity,
+    gravityForce: THREE.Vector3
+  ): void {
     if (!this.rayDebugger) return;
 
     const entityPos = entity.getPosition();
@@ -44,7 +63,19 @@ export class PhysicsManager {
       magnitude: gravityForce.length(),
     });
   }
-
+  private updateDirectionDebugRay(
+    entity: Entity,
+    direction: THREE.Vector3
+  ): void {
+    if (!this.rayDebugger) return;
+    const entityPos = entity.getPosition();
+    this.rayDebugger.setRay("direction", entity.getId(), {
+      id: entity.getId(),
+      origin: entityPos,
+      direction: direction.clone().normalize(),
+      magnitude: direction.length(),
+    });
+  }
   public applyPhysicsTo(
     entities: Entity[],
     inputIntents: Map<Entity, MovementIntent>
@@ -77,7 +108,7 @@ export class PhysicsManager {
       this.processMoonAttraction(entity);
 
     // Update debug visualization
-    this.updateDebugRay(entity, gravityForce);
+    this.updateGravityDebugRay(entity, gravityForce);
 
     if (!baseIntent) {
       return {
@@ -88,17 +119,18 @@ export class PhysicsManager {
     }
 
     // Mix direction: sum input direction and gravity force
-    const direction = baseIntent.direction
+    const totalForce = baseIntent.direction
       .clone()
-      .add(gravityForce)
-      .normalize();
+      .multiplyScalar(baseIntent.speed)
+      .add(gravityForce);
 
-    // Mix speed: you can either boost it based on gravity force, or keep it as-is
-    const speed = baseIntent.speed + gravityForce.length();
+    const direction = totalForce.clone().normalize();
+    const speed = totalForce.length();
+
+    this.updateDirectionDebugRay(entity, direction);
 
     // Blend rotations (input orientation → gravity orientation)
-    const finalQuat = baseIntent.targetRotation.clone().slerp(gravityQuat, 0.8);
-
+    const finalQuat =gravityQuat;
     return {
       direction,
       speed,
@@ -141,7 +173,7 @@ export class PhysicsManager {
     }
 
     // Apply gravity physics (simplified Newtonian gravity)
-    const G = 9.8; // Gravitational constant (tweak as needed for your game scale)
+    const G = 9.8 * 2;
     const massMoon = closestMoon.mass;
     const massEntity = entity.mass;
 

@@ -18,4 +18,9 @@ export class ControllerManager {
     }
     return result;
   }
+  syncControllersWithEntities() {
+    for (const [entity, controller] of this.bindings.entries()) {
+      controller.syncWithEntity(entity);
+    }
+  }
 }

@@ -42,9 +42,9 @@ const moon1 = new Moon(sceneManager.scene, {
   object: moonModel.clone(),
   scale: 0.5,
 });
-const cristal = new Cristal(sceneManager.scene, { object: cristalModel });
+const cristal = new Cristal(sceneManager.scene, { object: cristalModel.clone() });
 const trainHead = new TrainHead(sceneManager.scene, {
-  object: trainHeadModel,
+  object: trainHeadModel.clone(),
   position: [0, 80, 0],
   riderOffset: [0, 1.8, 0],
 });

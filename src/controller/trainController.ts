@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { Controller } from "./base/controller";
 import type { MovementIntent } from "../core/interfaces/movementIntent";
+import type { Entity } from "../entities/entity";
 
 export class TrainController extends Controller {
-  private stableDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
+  private readonly forwardVector: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
+  private stableDirection: THREE.Vector3 = this.forwardVector.clone();
   private moveSpeed = 4;
   private readonly baseSpeed = 4;
   private readonly maxSpeed = 10;
@@ -33,5 +35,12 @@ export class TrainController extends Controller {
       targetRotation: targetQuat,
       speed: this.moveSpeed,
     };
+  }
+
+  syncWithEntity(entity: Entity): void {
+    const forward = this.forwardVector
+      .clone()
+      .applyQuaternion(entity.getRotation());
+    this.setLookDirection(forward);
   }
 }

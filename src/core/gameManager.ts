@@ -5,7 +5,6 @@ import { PlayerModeEnum } from "./enums/playerMode.enum";
 import type { ControllerManager } from "./controllerManager";
 import { TrainController } from "../controller/trainController";
 import { IntentManager } from "./intentManager";
-import { CameraController } from "../controller/base/cameraController";
 import { PlayerController } from "../controller/base/playerController";
 import { PhysicsManager } from "./physicsManager";
 import { Entity } from "../entities/entity";
@@ -44,8 +43,8 @@ export class GameManager {
 
     this.physicsManager.setRayDebugger(this.rayDebugger);
 
-    // Sync cameras and controllers with the players positions
-    this.syncCameraControllersWithPlayers();
+    // Sync controllers with entities positions and rotations
+    this.controllerManager.syncControllersWithEntities();
   }
 
   public update(delta: number): void {
@@ -71,8 +70,8 @@ export class GameManager {
       entity.applyIntent(intent, delta);
     }
 
-    // 5. Sync player controllers with player positions
-    this.syncCameraControllersWithPlayers();
+    // 5. Sync entities controllers
+    this.controllerManager.syncControllersWithEntities();
   }
 
   public enablePhysicsDebug(enabled: boolean = true): void {
@@ -118,13 +117,6 @@ export class GameManager {
     }
   }
 
-  private syncCameraControllersWithPlayers() {
-    for (const player of this.players) {
-      const playerController = this.controllerManager.getController(player);
-      if (!(playerController instanceof CameraController)) continue;
-      playerController.syncWithEntity(player);
-    }
-  }
   bindPlayerToTrain(player: Player, train: TrainHead) {
     this.playerTrainBindings.set(player, train);
     console.log(`Player bound to train`);
