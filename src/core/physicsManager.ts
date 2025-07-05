@@ -84,22 +84,6 @@ export class PhysicsManager {
       description: "Surface normal debug visualization",
       defaultEnabled: true,
     });
-
-    this.rayDebugger.setGroupConfig("recovery", {
-      color: 0xff00ff,
-      scaleFactor: 2,
-      maxLength: 15,
-      headLength: 1.5,
-      headWidth: 0.8,
-      opacity: 1.0,
-    });
-
-    this.rayDebugger.registerGroupToggle({
-      key: "r",
-      groupName: "recovery",
-      description: "Underground recovery debug visualization",
-      defaultEnabled: true,
-    });
   }
 
   private updateGravityDebugRay(
@@ -170,9 +154,6 @@ export class PhysicsManager {
 
     this.frameCounter++;
 
-    // Process one entity from raycast queue per frame
-    this.surfaceConstraintsManager.processRaycastQueue();
-
     // Periodically clean up expired cache entries (much less frequent now)
     if (this.frameCounter % 600 === 0) {
       // Every 600 frames (~10 seconds at 60fps)
@@ -222,13 +203,10 @@ export class PhysicsManager {
       .add(gravityForce);
 
     let direction = totalForce.clone().normalize();
-    let speed = totalForce.length();
-
-    // Preserve more of the original input speed to maintain momentum
-    const inputSpeedRatio =
-      baseIntent.speed / (baseIntent.speed + gravityForce.length());
-    const preservedSpeed = baseIntent.speed * Math.max(0.7, inputSpeedRatio);
-    speed = Math.max(speed, preservedSpeed);
+    let speed = this.calculatePreservedSpeed(
+      totalForce.length(),
+      baseIntent.speed
+    );
 
     this.updateDirectionDebugRay(entity, direction);
 
@@ -261,32 +239,13 @@ export class PhysicsManager {
             this.surfaceConstraintsManager.applySurfaceConstraints(
               entity,
               closestMoon,
+              surfaceData,
               direction,
               speed,
-              2.0 // minimum distance from surface
+              3.0 // minimum distance from surface
             );
 
           direction = constraintResult.direction;
-
-          // Check for underground situation and apply emergency recovery
-          const isUnderground =
-            this.surfaceConstraintsManager.checkIfUnderground(
-              entityPos,
-              closestMoon,
-              surfaceData
-            );
-
-          if (isUnderground) {
-            // Emergency recovery: push entity back to surface
-            const recoveryResult =
-              this.surfaceConstraintsManager.performUndergroundRecovery(
-                entity,
-                closestMoon,
-                surfaceData
-              );
-            direction = recoveryResult.direction;
-            speed = recoveryResult.speed;
-          }
 
           // Apply speed smoothing to prevent sudden drops
           const entityId = entity.getId();
@@ -384,5 +343,15 @@ export class PhysicsManager {
       gravityQuat,
       closestMoon,
     };
+  }
+
+  private calculatePreservedSpeed(
+    forceSpeed: number,
+    intentSpeed: number
+  ): number {
+    if (intentSpeed === 0) return forceSpeed;
+    const inputSpeedRatio = intentSpeed / (intentSpeed + forceSpeed);
+    const preservedSpeed = intentSpeed * Math.max(0.7, inputSpeedRatio);
+    return Math.max(forceSpeed, preservedSpeed);
   }
 }
