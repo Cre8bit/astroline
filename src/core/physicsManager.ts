@@ -2,18 +2,24 @@ import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
 import type { MovementIntent } from "./interfaces/movementIntent";
 import type { RayDebuggerManager } from "./rayDebuggerManager";
+import { SurfaceConstraintsManager } from "./surfaceConstraintsManager";
 import * as THREE from "three";
 
 export class PhysicsManager {
   private readonly moons: Moon[];
   private rayDebugger?: RayDebuggerManager;
+  private previousSpeeds: Map<string, number> = new Map(); // Track previous speeds for momentum
+  private frameCounter = 0;
+  private surfaceConstraintsManager: SurfaceConstraintsManager;
 
   constructor(moons: Moon[]) {
     this.moons = moons;
+    this.surfaceConstraintsManager = new SurfaceConstraintsManager();
   }
 
   public setRayDebugger(rayDebugger: RayDebuggerManager): void {
     this.rayDebugger = rayDebugger;
+    this.surfaceConstraintsManager.setRayDebugger(rayDebugger);
 
     this.rayDebugger.setGroupConfig("gravity", {
       color: 0xff0000,
@@ -46,6 +52,54 @@ export class PhysicsManager {
       description: "Entity direction debug visualization",
       defaultEnabled: true,
     });
+
+    this.rayDebugger.setGroupConfig("moon-surface", {
+      color: 0x0099ff,
+      scaleFactor: 1,
+      maxLength: 100,
+      headLength: undefined,
+      headWidth: undefined,
+      opacity: 0.8,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: "m",
+      groupName: "moon-surface",
+      description: "Moon surface connection debug visualization",
+      defaultEnabled: true,
+    });
+
+    this.rayDebugger.setGroupConfig("surface-normal", {
+      color: 0xff9900,
+      scaleFactor: 5,
+      maxLength: 20,
+      headLength: 2,
+      headWidth: 1,
+      opacity: 0.9,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: "n",
+      groupName: "surface-normal",
+      description: "Surface normal debug visualization",
+      defaultEnabled: true,
+    });
+
+    this.rayDebugger.setGroupConfig("recovery", {
+      color: 0xff00ff,
+      scaleFactor: 2,
+      maxLength: 15,
+      headLength: 1.5,
+      headWidth: 0.8,
+      opacity: 1.0,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: "r",
+      groupName: "recovery",
+      description: "Underground recovery debug visualization",
+      defaultEnabled: true,
+    });
   }
 
   private updateGravityDebugRay(
@@ -76,11 +130,54 @@ export class PhysicsManager {
       magnitude: direction.length(),
     });
   }
+  private updateMoonSurfaceDebugRay(
+    entity: Entity,
+    moonSurfacePoint: THREE.Vector3
+  ): void {
+    if (!this.rayDebugger) return;
+
+    const entityPos = entity.getPosition();
+    const entityToSurface = moonSurfacePoint.clone().sub(entityPos);
+    const distance = entityToSurface.length();
+
+    this.rayDebugger.setRay("moon-surface", entity.getId(), {
+      id: entity.getId(),
+      origin: entityPos,
+      direction: entityToSurface.clone().normalize(),
+      magnitude: distance,
+    });
+  }
+  private updateSurfaceNormalDebugRay(
+    entity: Entity,
+    surfacePoint: THREE.Vector3,
+    surfaceNormal: THREE.Vector3
+  ): void {
+    if (!this.rayDebugger) return;
+
+    this.rayDebugger.setRay("surface-normal", entity.getId(), {
+      id: `${entity.getId()}-normal`,
+      origin: surfacePoint,
+      direction: surfaceNormal.clone().normalize(),
+      magnitude: 5,
+    });
+  }
+
   public applyPhysicsTo(
     entities: Entity[],
     inputIntents: Map<Entity, MovementIntent>
   ): Map<Entity, MovementIntent> {
     const result = new Map<Entity, MovementIntent>();
+
+    this.frameCounter++;
+
+    // Process one entity from raycast queue per frame
+    this.surfaceConstraintsManager.processRaycastQueue();
+
+    // Periodically clean up expired cache entries (much less frequent now)
+    if (this.frameCounter % 600 === 0) {
+      // Every 600 frames (~10 seconds at 60fps)
+      this.surfaceConstraintsManager.cleanupExpiredCache();
+    }
 
     for (const entity of entities) {
       if (entity.ignorePhysics) {
@@ -104,7 +201,7 @@ export class PhysicsManager {
     entity: Entity,
     baseIntent?: MovementIntent
   ): MovementIntent {
-    const { gravityForce, targetRotation: gravityQuat } =
+    const { gravityForce, gravityQuat, closestMoon } =
       this.processMoonAttraction(entity);
 
     // Update debug visualization
@@ -124,13 +221,106 @@ export class PhysicsManager {
       .multiplyScalar(baseIntent.speed)
       .add(gravityForce);
 
-    const direction = totalForce.clone().normalize();
-    const speed = totalForce.length();
+    let direction = totalForce.clone().normalize();
+    let speed = totalForce.length();
+
+    // Preserve more of the original input speed to maintain momentum
+    const inputSpeedRatio =
+      baseIntent.speed / (baseIntent.speed + gravityForce.length());
+    const preservedSpeed = baseIntent.speed * Math.max(0.7, inputSpeedRatio);
+    speed = Math.max(speed, preservedSpeed);
 
     this.updateDirectionDebugRay(entity, direction);
 
     // Blend rotations (input orientation → gravity orientation)
-    const finalQuat =gravityQuat;
+    let finalQuat = gravityQuat;
+
+    // Apply surface constraints if near a moon
+    if (closestMoon) {
+      const entityPos = entity.getPosition();
+      const moonPos = closestMoon.getPosition();
+      const distanceToMoon = entityPos.distanceTo(moonPos);
+
+      // Only do surface calculations when reasonably close to moon
+      if (distanceToMoon < 100) {
+        const surfaceData =
+          this.surfaceConstraintsManager.findClosestPointOnMoonSurface(
+            entity,
+            closestMoon
+          );
+        if (surfaceData) {
+          this.updateMoonSurfaceDebugRay(entity, surfaceData.point);
+          this.updateSurfaceNormalDebugRay(
+            entity,
+            surfaceData.point,
+            surfaceData.normal
+          );
+
+          // Apply surface constraints to movement
+          const constraintResult =
+            this.surfaceConstraintsManager.applySurfaceConstraints(
+              entity,
+              closestMoon,
+              direction,
+              speed,
+              2.0 // minimum distance from surface
+            );
+
+          direction = constraintResult.direction;
+
+          // Check for underground situation and apply emergency recovery
+          const isUnderground =
+            this.surfaceConstraintsManager.checkIfUnderground(
+              entityPos,
+              closestMoon,
+              surfaceData
+            );
+
+          if (isUnderground) {
+            // Emergency recovery: push entity back to surface
+            const recoveryResult =
+              this.surfaceConstraintsManager.performUndergroundRecovery(
+                entity,
+                closestMoon,
+                surfaceData
+              );
+            direction = recoveryResult.direction;
+            speed = recoveryResult.speed;
+          }
+
+          // Apply speed smoothing to prevent sudden drops
+          const entityId = entity.getId();
+          const previousSpeed = this.previousSpeeds.get(entityId) || speed;
+
+          // Smooth speed changes to maintain momentum
+          const maxSpeedChange = previousSpeed * 0.15; // Allow max 15% speed change per frame
+          const clampedSpeed = Math.max(
+            previousSpeed - maxSpeedChange,
+            Math.min(previousSpeed + maxSpeedChange, constraintResult.speed)
+          );
+
+          // Ensure minimum speed when moving
+          speed = Math.max(clampedSpeed, speed * 0.6);
+          this.previousSpeeds.set(entityId, speed);
+
+          // Blend with surface rotation when close to surface
+          if (constraintResult.surfaceRotation) {
+            const surfaceDistance = surfaceData.point
+              .clone()
+              .sub(entityPos)
+              .length();
+
+            if (surfaceDistance < 4.0) {
+              const blendFactor = 1 - Math.min(surfaceDistance / 4.0, 1.0);
+              finalQuat = gravityQuat
+                .clone()
+                .slerp(constraintResult.surfaceRotation, blendFactor);
+            }
+          }
+        }
+      }
+    }
+
     return {
       direction,
       speed,
@@ -140,7 +330,8 @@ export class PhysicsManager {
 
   private processMoonAttraction(entity: Entity): {
     gravityForce: THREE.Vector3;
-    targetRotation: THREE.Quaternion;
+    gravityQuat: THREE.Quaternion;
+    closestMoon?: Moon | null;
   } {
     let closestMoon: Moon | null = null;
     let minDistanceSq = Infinity;
@@ -165,14 +356,12 @@ export class PhysicsManager {
     }
 
     if (!closestMoon) {
-      // No moons found,
       return {
-        gravityForce: new THREE.Vector3(),
-        targetRotation: new THREE.Quaternion(),
+        gravityForce: new THREE.Vector3(0, 0, 0),
+        gravityQuat: new THREE.Quaternion(0, 0, 0, 1),
       };
     }
 
-    // Apply gravity physics (simplified Newtonian gravity)
     const G = 9.8 * 2;
     const massMoon = closestMoon.mass;
     const massEntity = entity.mass;
@@ -187,12 +376,13 @@ export class PhysicsManager {
     const up = new THREE.Vector3(0, 1, 0); // world up assumed
     const gravityDir = gravityForce.clone().normalize().negate(); // "up" should face opposite to gravity
 
-    const targetQuat = new THREE.Quaternion();
-    targetQuat.setFromUnitVectors(up, gravityDir); // rotation from up → gravity direction
+    const gravityQuat = new THREE.Quaternion();
+    gravityQuat.setFromUnitVectors(up, gravityDir); // rotation from up → gravity direction
 
     return {
       gravityForce,
-      targetRotation: targetQuat,
+      gravityQuat,
+      closestMoon,
     };
   }
 }
