@@ -1,6 +1,6 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
-import type { RayDebuggerManager } from "../utils/rayDebuggerManager";
+import { rayDebugger, type RayDebuggerService } from "../services/rayDebugger.service";
 import * as THREE from "three";
 
 interface SurfaceData {
@@ -27,7 +27,6 @@ export interface RaycastingPerformance {
 }
 
 export class SurfaceConstraintsManager {
-  private rayDebugger?: RayDebuggerManager;
   private surfaceDataCache: Map<
     string,
     {
@@ -43,10 +42,8 @@ export class SurfaceConstraintsManager {
     averageRaycastTime: 0,
   };
 
-  public setRayDebugger(rayDebugger: RayDebuggerManager): void {
-    this.rayDebugger = rayDebugger;
-
-    this.rayDebugger.setGroupConfig("moon-surface", {
+  public setRayDebugger(rayDebuggerService: RayDebuggerService): void {
+    rayDebuggerService.setGroupConfig("moon-surface", {
       color: 0x0099ff,
       scaleFactor: 1,
       maxLength: 100,
@@ -55,14 +52,14 @@ export class SurfaceConstraintsManager {
       opacity: 0.8,
     });
 
-    this.rayDebugger.registerGroupToggle({
+    rayDebuggerService.registerGroupToggle({
       key: "m",
       groupName: "moon-surface",
       description: "Moon surface connection debug visualization",
       defaultEnabled: true,
     });
 
-    this.rayDebugger.setGroupConfig("surface-normal", {
+    rayDebuggerService.setGroupConfig("surface-normal", {
       color: 0xff9900,
       scaleFactor: 1,
       maxLength: 20,
@@ -71,7 +68,7 @@ export class SurfaceConstraintsManager {
       opacity: 0.9,
     });
 
-    this.rayDebugger.registerGroupToggle({
+    rayDebuggerService.registerGroupToggle({
       key: "n",
       groupName: "surface-normal",
       description: "Surface normal debug visualization",
@@ -470,13 +467,14 @@ export class SurfaceConstraintsManager {
     entity: Entity,
     moonSurfacePoint: THREE.Vector3
   ): void {
-    if (!this.rayDebugger) return;
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
 
     const entityPos = entity.getPosition();
     const entityToSurface = moonSurfacePoint.clone().sub(entityPos);
     const distance = entityToSurface.length();
 
-    this.rayDebugger.setRay("moon-surface", entity.getId(), {
+    rayDebuggerService.setRay("moon-surface", entity.getId(), {
       id: entity.getId(),
       origin: entityPos,
       direction: entityToSurface.clone().normalize(),
@@ -489,9 +487,10 @@ export class SurfaceConstraintsManager {
     surfacePoint: THREE.Vector3,
     surfaceNormal: THREE.Vector3
   ): void {
-    if (!this.rayDebugger) return;
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
 
-    this.rayDebugger.setRay("surface-normal", entity.getId(), {
+    rayDebuggerService.setRay("surface-normal", entity.getId(), {
       id: `${entity.getId()}-normal`,
       origin: surfacePoint,
       direction: surfaceNormal.clone().normalize(),

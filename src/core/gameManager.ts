@@ -9,7 +9,7 @@ import { PlayerController } from "../controller/base/playerController";
 import { PhysicsManager } from "./physicsManager";
 import { Entity } from "../entities/entity";
 import { Moon } from "../entities/moon";
-import { RayDebuggerManager } from "../utils/rayDebuggerManager";
+import { rayDebugger, type RayDebuggerService } from "../services/rayDebugger.service";
 import type { RaycastingPerformance } from "./surfaceConstraintsManager";
 
 export class GameManager {
@@ -21,7 +21,6 @@ export class GameManager {
   private readonly controllerManager: ControllerManager;
   private readonly intentManager: IntentManager;
   private readonly physicsManager: PhysicsManager;
-  private readonly rayDebugger: RayDebuggerManager;
 
   constructor(
     entities: Entity[],
@@ -38,11 +37,13 @@ export class GameManager {
     this.intentManager = new IntentManager();
     this.physicsManager = new PhysicsManager(this.moons);
 
-    this.rayDebugger = new RayDebuggerManager();
-    this.rayDebugger.setScene(scene);
-    this.rayDebugger.enable(true);
+    // Initialize RayDebugger service
+    const rayDebuggerService = rayDebugger();
+    rayDebuggerService.initialize();
+    rayDebuggerService.setScene(scene);
+    rayDebuggerService.enable(true);
 
-    this.physicsManager.setRayDebugger(this.rayDebugger);
+    this.physicsManager.setRayDebugger(rayDebuggerService);
 
     // Sync controllers with entities positions and rotations
     this.controllerManager.syncControllersWithEntities();
@@ -76,11 +77,12 @@ export class GameManager {
   }
 
   public enablePhysicsDebug(enabled: boolean = true): void {
-    this.rayDebugger.enable(enabled);
+    const rayDebuggerService = rayDebugger();
+    rayDebuggerService.enable(enabled);
   }
 
-  public getRayDebugger(): RayDebuggerManager {
-    return this.rayDebugger;
+  public getRayDebugger(): RayDebuggerService {
+    return rayDebugger();
   }
 
   public getPhysicsManager(): PhysicsManager {

@@ -47,17 +47,18 @@ const player = new Player(sceneManager.scene, {
 });
 
 const moon1 = new Moon(sceneManager.scene, {
-  object:  moonModel.clone(),
+  object: moonModel.clone(),
   scale: 0.5,
 });
 
 const cristal = new Cristal(sceneManager.scene, {
   object: cristalModel.clone(),
+  position: [0, 72, 0],
 });
 
 const trainHead = new TrainHead(sceneManager.scene, {
   object: trainHeadModel.clone(),
-  position: [0, 80, 0],
+  position: [0, 90, 0],
   riderOffset: [0, 1.8, 0],
 });
 
@@ -95,32 +96,36 @@ function animate(): void {
 animate();
 
 function updateHUD(delta: number) {
-    // Update player coordinates HUD
-    const playerPosition = player.getPosition();
-    hud.textContent = `X: ${playerPosition.x.toFixed(
-      2
-    )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
+  // Update player coordinates HUD
+  const playerPosition = player.getPosition();
+  hud.textContent = `X: ${playerPosition.x.toFixed(
+    2
+  )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
 
-    // Update FPS counter
-    const currentFrameTime = performance.now();
-    const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
-    lastFrameTime = currentFrameTime;
-    fpsCounter.textContent = `FPS: ${fps}`;
+  // Update FPS counter
+  const currentFrameTime = performance.now();
+  const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
+  lastFrameTime = currentFrameTime;
+  fpsCounter.textContent = `FPS: ${fps}`;
 
-    // Log BVH performance stats every 5 seconds
-    performanceLogTimer += delta;
-    if (performanceLogTimer > 1.0) {
-      const stats = gameManager.getRaycastingPerformance();
+  // Log BVH performance stats every 5 seconds
+  performanceLogTimer += delta;
+  if (performanceLogTimer > 1.0) {
+    const stats = gameManager.getRaycastingPerformance();
 
-      // Update performance HUD
-      performanceCounter.innerHTML = `
-        <div>BVH: ${stats.averageRaycastTime.toFixed(3)}ms | Cache: ${stats.cacheHitRate.toFixed(1)}%</div>
-        <div>Raycasts: ${stats.trueRaycasts} | Cache Hits: ${stats.cacheHits}</div>
+    // Update performance HUD
+    performanceCounter.innerHTML = `
+        <div>BVH: ${stats.averageRaycastTime.toFixed(
+          3
+        )}ms | Cache: ${stats.cacheHitRate.toFixed(1)}%</div>
+        <div>Raycasts: ${stats.trueRaycasts} | Cache Hits: ${
+      stats.cacheHits
+    }</div>
       `;
-      performanceLogTimer = 0;
-    }
+    performanceLogTimer = 0;
   }
-  
+}
+
 window.addEventListener("resize", () => {
   sceneManager.resizeRendererToDisplaySize();
   playerController.getCamera().aspect = window.innerWidth / window.innerHeight;

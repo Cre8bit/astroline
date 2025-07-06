@@ -25,7 +25,11 @@ export interface GroupToggleConfig {
   defaultEnabled?: boolean;
 }
 
-export class RayDebuggerManager {
+/**
+ * Ray Debugger Service - Singleton for debug ray visualization
+ */
+export class RayDebuggerService {
+  private static instance: RayDebuggerService;
   private scene?: THREE.Scene;
   private debugRays = new Map<string, THREE.ArrowHelper>();
   private debugGroups = new Map<string, Set<string>>();
@@ -34,6 +38,40 @@ export class RayDebuggerManager {
   private groupToggles = new Map<string, boolean>();
   private keyBindings = new Map<string, GroupToggleConfig>();
   private keyListener?: (event: KeyboardEvent) => void;
+  private initialized: boolean = false;
+
+  private constructor() {}
+
+  /**
+   * Get the singleton instance
+   */
+  public static getInstance(): RayDebuggerService {
+    if (!RayDebuggerService.instance) {
+      RayDebuggerService.instance = new RayDebuggerService();
+    }
+    return RayDebuggerService.instance;
+  }
+  /**
+   * Initialize the service
+   */
+  public initialize(): void {
+    if (this.initialized) {
+      return;
+    }
+
+    console.log("Initializing RayDebuggerService...");
+    this.initialized = true;
+
+    // Set up global toggle key for hiding/showing all groups
+    this.setupGlobalToggleKey();
+  }
+
+  /**
+   * Check if the service is initialized
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
 
   public setScene(scene: THREE.Scene): void {
     this.scene = scene;
@@ -69,6 +107,13 @@ export class RayDebuggerManager {
   private setupKeyListener(): void {
     this.keyListener = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
+
+      // Check for global toggle key (H key)
+      if (key === "h") {
+        this.toggleAllGroups();
+        return;
+      }
+
       const config = this.keyBindings.get(key);
 
       if (config) {
@@ -85,6 +130,15 @@ export class RayDebuggerManager {
     };
 
     window.addEventListener("keydown", this.keyListener);
+  }
+
+  /**
+   * Setup global toggle key for hiding/showing all groups
+   */
+  private setupGlobalToggleKey(): void {
+    if (!this.keyListener) {
+      this.setupKeyListener();
+    }
   }
 
   /**
@@ -260,9 +314,23 @@ export class RayDebuggerManager {
   }
 
   /**
+   * Toggle all groups on/off at once
+   */
+  public toggleAllGroups(): void {
+    this.enable(!this.enabled);
+
+    if (this.enabled) {
+      console.log("All debug ray groups enabled (Press H to disable)");
+    } else {
+      console.log("All debug ray groups disabled (Press H to enable)");
+    }
+  }
+
+  /**
    * Clean up all resources
    */
   public dispose(): void {
+    console.log("Disposing RayDebuggerService...");
     this.clearAllRays();
     this.groupConfigs.clear();
 
@@ -274,5 +342,9 @@ export class RayDebuggerManager {
 
     this.keyBindings.clear();
     this.groupToggles.clear();
+    this.initialized = false;
   }
 }
+
+// Export convenience function for easy access
+export const rayDebugger = () => RayDebuggerService.getInstance();

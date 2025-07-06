@@ -1,13 +1,12 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
 import type { MovementIntent } from "./interfaces/movementIntent.interface";
-import type { RayDebuggerManager } from "../utils/rayDebuggerManager";
+import { rayDebugger, type RayDebuggerService } from "../services/rayDebugger.service";
 import { SurfaceConstraintsManager } from "./surfaceConstraintsManager";
 import * as THREE from "three";
 
 export class PhysicsManager {
   private readonly moons: Moon[];
-  private rayDebugger?: RayDebuggerManager;
   private previousSpeeds: Map<string, number> = new Map(); // Track previous speeds for momentum
   private frameCounter = 0;
   private surfaceConstraintsManager: SurfaceConstraintsManager;
@@ -17,11 +16,10 @@ export class PhysicsManager {
     this.surfaceConstraintsManager = new SurfaceConstraintsManager();
   }
 
-  public setRayDebugger(rayDebugger: RayDebuggerManager): void {
-    this.rayDebugger = rayDebugger;
-    this.surfaceConstraintsManager.setRayDebugger(rayDebugger);
+  public setRayDebugger(rayDebuggerService: RayDebuggerService): void {
+    this.surfaceConstraintsManager.setRayDebugger(rayDebuggerService);
 
-    this.rayDebugger.setGroupConfig("gravity", {
+    rayDebuggerService.setGroupConfig("gravity", {
       color: 0xff0000,
       scaleFactor: 10,
       maxLength: 50,
@@ -30,14 +28,14 @@ export class PhysicsManager {
       opacity: 0.8,
     });
 
-    this.rayDebugger.registerGroupToggle({
+    rayDebuggerService.registerGroupToggle({
       key: "g",
       groupName: "gravity",
       description: "Gravity debug visualization",
       defaultEnabled: true,
     });
 
-    this.rayDebugger.setGroupConfig("direction", {
+    rayDebuggerService.setGroupConfig("direction", {
       color: 0x00ff00,
       scaleFactor: 10,
       maxLength: 30,
@@ -46,8 +44,8 @@ export class PhysicsManager {
       opacity: 0.9,
     });
 
-    this.rayDebugger.registerGroupToggle({
-      key: "h",
+    rayDebuggerService.registerGroupToggle({
+      key: "b",
       groupName: "direction",
       description: "Entity direction debug visualization",
       defaultEnabled: true,
@@ -58,26 +56,29 @@ export class PhysicsManager {
     entity: Entity,
     gravityForce: THREE.Vector3
   ): void {
-    if (!this.rayDebugger) return;
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
 
     const entityPos = entity.getPosition();
 
-    this.rayDebugger.setRay("gravity", entity.getId(), {
+    rayDebuggerService.setRay("gravity", entity.getId(), {
       id: entity.getId(),
       origin: entityPos,
       direction: gravityForce.clone().normalize(),
       magnitude: gravityForce.length(),
     });
   }
+  
   private updateDirectionDebugRay(
     entity: Entity,
     direction: THREE.Vector3
   ): void {
-    if (!this.rayDebugger) return;
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
 
     const entityPos = entity.getPosition();
 
-    this.rayDebugger.setRay("direction", entity.getId(), {
+    rayDebuggerService.setRay("direction", entity.getId(), {
       id: entity.getId(),
       origin: entityPos,
       direction: direction.clone().normalize(),
