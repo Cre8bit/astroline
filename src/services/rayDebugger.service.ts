@@ -54,7 +54,7 @@ export class RayDebuggerService {
   /**
    * Initialize the service
    */
-  public initialize(): void {
+  public initialize(scene: THREE.Scene, enable: boolean): void {
     if (this.initialized) {
       return;
     }
@@ -64,6 +64,8 @@ export class RayDebuggerService {
 
     // Set up global toggle key for hiding/showing all groups
     this.setupGlobalToggleKey();
+    this.setScene(scene);
+    this.enable(enable);
   }
 
   /**

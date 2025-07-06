@@ -11,6 +11,7 @@ import { TrainController } from "./controller/trainController";
 import { ControllerManager } from "./core/controllerManager";
 import { GameManager } from "./core/gameManager";
 import { initializeBVH } from "./utils/bvhInit";
+import { raycastingService } from "./services/raycasting.service";
 
 // Initialize BVH methods on BufferGeometry prototype
 initializeBVH();
@@ -28,7 +29,9 @@ let performanceLogTimer = 0;
 const clock = new THREE.Clock();
 
 //Load models
-const moonModel = await GLBModelLoader.loadWithBVH("/models/moon/Moon.glb");
+const moonModel = await GLBModelLoader.load("/models/moon/Moon.glb", {
+  bvh: true,
+});
 const cristalModel = await GLBModelLoader.load("/models/cristal/Cristal.glb");
 const trainHeadModel = await GLBModelLoader.load(
   "/models/train/head/Train_Head.glb"
@@ -111,17 +114,12 @@ function updateHUD(delta: number) {
   // Log BVH performance stats every 5 seconds
   performanceLogTimer += delta;
   if (performanceLogTimer > 1.0) {
-    const stats = gameManager.getRaycastingPerformance();
+    const stats = raycastingService().getFramePerformanceStats();
 
     // Update performance HUD
-    performanceCounter.innerHTML = `
-        <div>BVH: ${stats.averageRaycastTime.toFixed(
-          3
-        )}ms | Cache: ${stats.cacheHitRate.toFixed(1)}%</div>
-        <div>Raycasts: ${stats.trueRaycasts} | Cache Hits: ${
-      stats.cacheHits
-    }</div>
-      `;
+    performanceCounter.textContent = `BVH: ${stats.frameAverageTime.toFixed(
+      3
+    )}ms | Hits: ${stats.frameRaycasts}`;
     performanceLogTimer = 0;
   }
 }

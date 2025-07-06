@@ -1,23 +1,24 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
 import type { MovementIntent } from "./interfaces/movementIntent.interface";
-import { rayDebugger, type RayDebuggerService } from "../services/rayDebugger.service";
+import { rayDebugger } from "../services/rayDebugger.service";
 import { SurfaceConstraintsManager } from "./surfaceConstraintsManager";
 import * as THREE from "three";
 
 export class PhysicsManager {
   private readonly moons: Moon[];
   private previousSpeeds: Map<string, number> = new Map(); // Track previous speeds for momentum
-  private frameCounter = 0;
   private surfaceConstraintsManager: SurfaceConstraintsManager;
 
   constructor(moons: Moon[]) {
     this.moons = moons;
     this.surfaceConstraintsManager = new SurfaceConstraintsManager();
+    this.setupRayDebugger();
   }
 
-  public setRayDebugger(rayDebuggerService: RayDebuggerService): void {
-    this.surfaceConstraintsManager.setRayDebugger(rayDebuggerService);
+  private setupRayDebugger(): void {
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
 
     rayDebuggerService.setGroupConfig("gravity", {
       color: 0xff0000,
@@ -95,14 +96,6 @@ export class PhysicsManager {
     inputIntents: Map<Entity, MovementIntent>
   ): Map<Entity, MovementIntent> {
     const result = new Map<Entity, MovementIntent>();
-
-    this.frameCounter++;
-
-    // Periodically clean up expired cache entries (much less frequent now)
-    if (this.frameCounter % 600 === 0) {
-      // Every 600 frames (~10 seconds at 60fps)
-      this.surfaceConstraintsManager.cleanupExpiredCache();
-    }
 
     for (const entity of entities) {
       if (entity.ignorePhysics) {

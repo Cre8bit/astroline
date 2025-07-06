@@ -1,10 +1,17 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
 
+interface LoadParams {
+  bvh?: boolean;
+}
+
 abstract class ModelLoader {
   protected static cache: Map<string, THREE.Object3D> = new Map();
 
-  static async load(path: string): Promise<THREE.Object3D> {
+  static async load(
+    path: string,
+    params: LoadParams = {}
+  ): Promise<THREE.Object3D> {
     throw new Error("load() must be implemented by subclass");
   }
 
@@ -27,31 +34,10 @@ abstract class ModelLoader {
 }
 
 export class GLBModelLoader extends ModelLoader {
-
-  static async load(path: string): Promise<THREE.Object3D> {
-    const cached = this.getFromCache(path);
-    if (cached) {
-      return cached;
-    }
-
-    const loader = new GLTFLoader();
-
-    return new Promise((resolve, reject) => {
-    loader.load(
-      path,
-      (gltf) => {
-        this.addToCache(path, gltf.scene);
-        console.log(`Model loaded from ${path}`);
-        resolve(gltf.scene.clone());
-      },
-      undefined,
-      (error) => {
-        reject(new Error(error instanceof Error ? error.message : String(error)));
-      }
-    );
-    });
-  }
-  static async loadWithBVH(path: string): Promise<THREE.Object3D> {
+  static async load(
+    path: string,
+    params: LoadParams = {}
+  ): Promise<THREE.Object3D> {
     const cached = this.getFromCache(path);
     if (cached) {
       return cached;
@@ -63,10 +49,13 @@ export class GLBModelLoader extends ModelLoader {
       loader.load(
         path,
         (gltf) => {
-          // Apply BVH to the original model before caching
-          this.applyBVHToModel(gltf.scene);
+          let logMessage = `Loading model from ${path}`;
+          if (params.bvh) {
+            this.applyBVHToModel(gltf.scene);
+            logMessage += " with BVH applied";
+          }
           this.addToCache(path, gltf.scene);
-          console.log(`Model loaded and BVH applied: ${path}`);
+          console.log(logMessage);
           resolve(gltf.scene.clone());
         },
         undefined,
@@ -78,7 +67,6 @@ export class GLBModelLoader extends ModelLoader {
       );
     });
   }
-
   static applyBVHToModel(root: THREE.Object3D): void {
     console.log("Applying BVH to model...");
     let meshCount = 0;

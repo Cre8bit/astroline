@@ -12,15 +12,17 @@ Multiplayer support
 ## Experiment
 
 A game where LLM has an interface to modify certain rules and do a LLM + bots vs Humans
+The moon network where galaxies are made of people creating moons under their names
 
 ## Debug Visualization
 
 Press these keys to toggle debug visualizations:
 
-- `S` - Surface raycasting rays (green)
-- `N` - Surface normals (red)
+- `H` - Disable debug rays
+- `M` - Surface raycasting rays
+- `N` - Surface normals
 - `G` - Gravity debug visualization
-- `H` - Direction debug visualization
+- `B` - Direction debug visualization
 
 ## Architecture
 

@@ -9,14 +9,13 @@ import { PlayerController } from "../controller/base/playerController";
 import { PhysicsManager } from "./physicsManager";
 import { Entity } from "../entities/entity";
 import { Moon } from "../entities/moon";
-import { rayDebugger, type RayDebuggerService } from "../services/rayDebugger.service";
-import type { RaycastingPerformance } from "./surfaceConstraintsManager";
+import { rayDebugger } from "../services/rayDebugger.service";
+import { raycastingService } from "../services/raycasting.service";
 
 export class GameManager {
   private readonly entities: Entity[];
   private readonly playerTrainBindings = new Map<Player, TrainHead>();
   private readonly players: Player[];
-  private readonly trains: TrainHead[];
   private readonly moons: Moon[] = [];
   private readonly controllerManager: ControllerManager;
   private readonly intentManager: IntentManager;
@@ -30,22 +29,15 @@ export class GameManager {
     this.entities = entities;
 
     this.players = entities.filter((e) => e instanceof Player) as Player[];
-    this.trains = entities.filter((e) => e instanceof TrainHead) as TrainHead[];
     this.moons = entities.filter((e) => e instanceof Moon) as Moon[];
 
     this.controllerManager = controllerManager;
     this.intentManager = new IntentManager();
+    
     this.physicsManager = new PhysicsManager(this.moons);
 
-    // Initialize RayDebugger service
-    const rayDebuggerService = rayDebugger();
-    rayDebuggerService.initialize();
-    rayDebuggerService.setScene(scene);
-    rayDebuggerService.enable(true);
+    rayDebugger().initialize(scene, true);
 
-    this.physicsManager.setRayDebugger(rayDebuggerService);
-
-    // Sync controllers with entities positions and rotations
     this.controllerManager.syncControllersWithEntities();
   }
 
@@ -79,17 +71,6 @@ export class GameManager {
   public enablePhysicsDebug(enabled: boolean = true): void {
     const rayDebuggerService = rayDebugger();
     rayDebuggerService.enable(enabled);
-  }
-
-  public getRayDebugger(): RayDebuggerService {
-    return rayDebugger();
-  }
-
-  public getPhysicsManager(): PhysicsManager {
-    return this.physicsManager;
-  }
-  public getRaycastingPerformance(): RaycastingPerformance {
-    return this.physicsManager.getSurfaceConstraintsManager().getPerformanceStats();
   }
 
   private processPlayerTrainBindings(delta: number) {

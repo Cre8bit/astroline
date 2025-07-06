@@ -1,9 +1,10 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
-import { rayDebugger, type RayDebuggerService } from "../services/rayDebugger.service";
+import { raycastingService } from "../services/raycasting.service";
+import { rayDebugger } from "../services/rayDebugger.service";
 import * as THREE from "three";
 
-interface SurfaceData {
+export interface SurfaceData {
   point: THREE.Vector3;
   normal: THREE.Vector3;
 }
@@ -19,30 +20,15 @@ interface PredictiveCollisionResult {
   urgency: number;
 }
 
-export interface RaycastingPerformance {
-  trueRaycasts: number;
-  cacheHits: number;
-  averageRaycastTime: number;
-  cacheHitRate: number;
-}
-
 export class SurfaceConstraintsManager {
-  private surfaceDataCache: Map<
-    string,
-    {
-      point: THREE.Vector3;
-      normal: THREE.Vector3;
-      timestamp: number;
-    }
-  > = new Map();
-  private readonly CACHE_DURATION = 100; // Cache for 10ms to reduce raycasting
-  private performanceStats = {
-    trueRaycasts: 0,
-    cacheHits: 0,
-    averageRaycastTime: 0,
-  };
+  constructor() {
+    this.setupRayDebugger();
+  }
 
-  public setRayDebugger(rayDebuggerService: RayDebuggerService): void {
+  private setupRayDebugger(): void {
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
+
     rayDebuggerService.setGroupConfig("moon-surface", {
       color: 0x0099ff,
       scaleFactor: 1,
@@ -81,21 +67,20 @@ export class SurfaceConstraintsManager {
     moon: Moon
   ): SurfaceData | null {
     const entityPos = entity.getPosition();
-    const entityId = entity.getId();
-    const now = Date.now();
+    const moonPos = moon.getPosition();
 
-    // Check if we have cached data that's still valid
-    const cachedData = this.surfaceDataCache.get(entityId);
-    if (cachedData && now - cachedData.timestamp < this.CACHE_DURATION) {
-      // Use cached data
-      this.performanceStats.cacheHits++;
+    // Use the general raycasting service to find closest point
+    const result = raycastingService().raycastTowards(entityPos, moonPos, [
+      moon.object,
+    ]);
 
-      const surfaceData = {
-        point: cachedData.point,
-        normal: cachedData.normal,
+    if (result) {
+      const surfaceData: SurfaceData = {
+        point: result.point,
+        normal: result.normal,
       };
 
-      // Update debug rays for cached data too
+      // Update debug rays
       this.updateMoonSurfaceDebugRay(entity, surfaceData.point);
       this.updateSurfaceNormalDebugRay(
         entity,
@@ -104,77 +89,6 @@ export class SurfaceConstraintsManager {
       );
 
       return surfaceData;
-    }
-
-    // Perform actual raycasting
-    const raycastStart = performance.now();
-    const raycastResult = this.performRaycast(entity, moon);
-    const raycastTime = performance.now() - raycastStart;
-
-    this.performanceStats.trueRaycasts++;
-    this.performanceStats.averageRaycastTime =
-      (this.performanceStats.averageRaycastTime *
-        (this.performanceStats.trueRaycasts - 1) +
-        raycastTime) /
-      this.performanceStats.trueRaycasts;
-
-    if (raycastResult) {
-      // Cache the result
-      this.surfaceDataCache.set(entityId, {
-        point: raycastResult.point,
-        normal: raycastResult.normal,
-        timestamp: now,
-      });
-
-      // Update debug rays automatically
-      this.updateMoonSurfaceDebugRay(entity, raycastResult.point);
-      this.updateSurfaceNormalDebugRay(
-        entity,
-        raycastResult.point,
-        raycastResult.normal
-      );
-
-      return raycastResult;
-    }
-
-    return null;
-  }
-
-  private performRaycast(entity: Entity, moon: Moon): SurfaceData | null {
-    const entityPos = entity.getPosition();
-    const moonPos = moon.getPosition();
-
-    // Primary raycast for surface point using BVH-accelerated raycasting
-    const raycaster = new THREE.Raycaster();
-    const direction = moonPos.clone().sub(entityPos).normalize();
-    raycaster.set(entityPos, direction);
-
-    // BVH raycasting is automatically used when THREE.Mesh.prototype.raycast is overridden
-    const intersects = raycaster.intersectObject(moon.object, true);
-
-    if (intersects.length > 0) {
-      const intersection = intersects[0];
-      const surfacePoint = intersection.point;
-
-      // Use face normal if available, otherwise geometric normal
-      let surfaceNormal: THREE.Vector3;
-      if (intersection.face && intersection.face.normal) {
-        // Transform face normal to world space
-        const worldNormal = intersection.face.normal.clone();
-        const normalMatrix = new THREE.Matrix3().getNormalMatrix(
-          intersection.object.matrixWorld
-        );
-        worldNormal.applyMatrix3(normalMatrix).normalize();
-        surfaceNormal = worldNormal;
-      } else {
-        // Fallback to geometric normal
-        surfaceNormal = surfacePoint.clone().sub(moonPos).normalize();
-      }
-
-      return {
-        point: surfacePoint,
-        normal: surfaceNormal,
-      };
     }
 
     return null;
@@ -439,31 +353,8 @@ export class SurfaceConstraintsManager {
     // Clamp speed factor to reasonable bounds
     return Math.max(0.4, Math.min(1.6, speedFactor));
   }
-  public getPerformanceStats(): RaycastingPerformance {
-    return {
-      trueRaycasts: this.performanceStats.trueRaycasts,
-      cacheHits: this.performanceStats.cacheHits,
-      averageRaycastTime: this.performanceStats.averageRaycastTime,
-      cacheHitRate:
-        this.performanceStats.trueRaycasts > 0
-          ? (this.performanceStats.cacheHits /
-              (this.performanceStats.trueRaycasts +
-                this.performanceStats.cacheHits)) *
-            100
-          : 0,
-    };
-  }
 
-  public cleanupExpiredCache(): void {
-    const now = Date.now();
-    for (const [key, value] of this.surfaceDataCache.entries()) {
-      if (now - value.timestamp > this.CACHE_DURATION * 2) {
-        this.surfaceDataCache.delete(key);
-      }
-    }
-  }
-
-  public updateMoonSurfaceDebugRay(
+  private updateMoonSurfaceDebugRay(
     entity: Entity,
     moonSurfacePoint: THREE.Vector3
   ): void {
@@ -482,7 +373,7 @@ export class SurfaceConstraintsManager {
     });
   }
 
-  public updateSurfaceNormalDebugRay(
+  private updateSurfaceNormalDebugRay(
     entity: Entity,
     surfacePoint: THREE.Vector3,
     surfaceNormal: THREE.Vector3
