@@ -10,7 +10,6 @@ import { PhysicsManager } from "./physicsManager";
 import { Entity } from "../entities/entity";
 import { Moon } from "../entities/moon";
 import { rayDebugger } from "../services/rayDebugger.service";
-import { raycastingService } from "../services/raycasting.service";
 
 export class GameManager {
   private readonly entities: Entity[];
@@ -38,7 +37,25 @@ export class GameManager {
 
     rayDebugger().initialize(scene, true);
 
+    // Register entities for automatic debug ray updates
+    this.setupAutomaticRayDebugging();
+
     this.controllerManager.syncControllersWithEntities();
+  }
+
+  private setupAutomaticRayDebugging(): void {
+    // Register entities for physics ray debugging
+    for (const entity of this.entities) {
+      if (!entity.ignorePhysics) {
+        this.physicsManager.registerEntityForRayDebugging(entity);
+        
+        // Register for surface debugging if there are moons
+        if (this.moons.length > 0) {
+          const surfaceManager = this.physicsManager.getSurfaceConstraintsManager();
+          surfaceManager.registerEntityForSurfaceDebugging(entity, this.moons[0]);
+        }
+      }
+    }
   }
 
   public update(delta: number): void {

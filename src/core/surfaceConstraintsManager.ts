@@ -21,6 +21,8 @@ interface PredictiveCollisionResult {
 }
 
 export class SurfaceConstraintsManager {
+  private surfaceDataCache = new Map<string, SurfaceData>();
+
   constructor() {
     this.setupRayDebugger();
   }
@@ -62,6 +64,50 @@ export class SurfaceConstraintsManager {
     });
   }
 
+  public registerEntityForSurfaceDebugging(entity: Entity, moon: Moon): void {
+    const rayDebuggerService = rayDebugger();
+    if (!rayDebuggerService) return;
+
+    rayDebuggerService.registerRayUpdater(
+      "moon-surface",
+      entity.getId(),
+      entity,
+      (entity: Entity) => {
+        const cachedSurfaceData = this.surfaceDataCache.get(entity.getId());
+        if (!cachedSurfaceData) return null;
+
+        const entityPos = entity.getPosition();
+        const entityToSurface = cachedSurfaceData.point.clone().sub(entityPos);
+
+        return {
+          id: entity.getId(),
+          origin: entityPos,
+          direction: entityToSurface.clone().normalize(),
+          magnitude: entityToSurface.length(),
+        };
+      },
+      [moon]
+    );
+
+    rayDebuggerService.registerRayUpdater(
+      "surface-normal",
+      `${entity.getId()}`,
+      entity,
+      (entity: Entity) => {
+        const cachedSurfaceData = this.surfaceDataCache.get(entity.getId());
+        if (!cachedSurfaceData) return null;
+
+        return {
+          id: `${entity.getId()}-normal`,
+          origin: cachedSurfaceData.point,
+          direction: cachedSurfaceData.normal.clone().normalize(),
+          magnitude: 5,
+        };
+      },
+      [moon]
+    );
+  }
+
   public findClosestPointOnMoonSurface(
     entity: Entity,
     moon: Moon
@@ -80,17 +126,12 @@ export class SurfaceConstraintsManager {
         normal: result.normal,
       };
 
-      // Update debug rays
-      this.updateMoonSurfaceDebugRay(entity, surfaceData.point);
-      this.updateSurfaceNormalDebugRay(
-        entity,
-        surfaceData.point,
-        surfaceData.normal
-      );
+      this.surfaceDataCache.set(entity.getId(), surfaceData);
 
       return surfaceData;
     }
 
+    this.surfaceDataCache.delete(entity.getId());
     return null;
   }
 
@@ -354,38 +395,17 @@ export class SurfaceConstraintsManager {
     return Math.max(0.4, Math.min(1.6, speedFactor));
   }
 
-  private updateMoonSurfaceDebugRay(
-    entity: Entity,
-    moonSurfacePoint: THREE.Vector3
-  ): void {
-    const rayDebuggerService = rayDebugger();
-    if (!rayDebuggerService) return;
-
-    const entityPos = entity.getPosition();
-    const entityToSurface = moonSurfacePoint.clone().sub(entityPos);
-    const distance = entityToSurface.length();
-
-    rayDebuggerService.setRay("moon-surface", entity.getId(), {
-      id: entity.getId(),
-      origin: entityPos,
-      direction: entityToSurface.clone().normalize(),
-      magnitude: distance,
-    });
+  /**
+   * Clear cached debug data for an entity
+   */
+  public clearEntityCache(entityId: string): void {
+    this.surfaceDataCache.delete(entityId);
   }
 
-  private updateSurfaceNormalDebugRay(
-    entity: Entity,
-    surfacePoint: THREE.Vector3,
-    surfaceNormal: THREE.Vector3
-  ): void {
-    const rayDebuggerService = rayDebugger();
-    if (!rayDebuggerService) return;
-
-    rayDebuggerService.setRay("surface-normal", entity.getId(), {
-      id: `${entity.getId()}-normal`,
-      origin: surfacePoint,
-      direction: surfaceNormal.clone().normalize(),
-      magnitude: 5,
-    });
+  /**
+   * Clear all cached debug data
+   */
+  public clearAllCaches(): void {
+    this.surfaceDataCache.clear();
   }
 }

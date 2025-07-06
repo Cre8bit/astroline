@@ -12,6 +12,8 @@ import { ControllerManager } from "./core/controllerManager";
 import { GameManager } from "./core/gameManager";
 import { initializeBVH } from "./utils/bvhInit";
 import { raycastingService } from "./services/raycasting.service";
+import { bvhDebugger } from "./services/bvhDebugger.service";
+import { rayDebugger } from "./services/rayDebugger.service";
 
 // Initialize BVH methods on BufferGeometry prototype
 initializeBVH();
@@ -32,9 +34,12 @@ const clock = new THREE.Clock();
 const moonModel = await GLBModelLoader.load("/models/moon/Moon.glb", {
   bvh: true,
 });
-const cristalModel = await GLBModelLoader.load("/models/cristal/Cristal.glb");
+const cristalModel = await GLBModelLoader.load("/models/cristal/Cristal.glb", {
+  bvh: false,
+});
 const trainHeadModel = await GLBModelLoader.load(
-  "/models/train/head/Train_Head.glb"
+  "/models/train/head/Train_Head.glb",
+  { bvh: true }
 );
 
 //Setup scene and lighting
@@ -65,6 +70,52 @@ const trainHead = new TrainHead(sceneManager.scene, {
   riderOffset: [0, 1.8, 0],
 });
 
+// Initialize BVH debugger
+const bvhDebuggerService = bvhDebugger();
+bvhDebuggerService.initialize(sceneManager.scene, true);
+
+bvhDebuggerService.registerGroupToggle({
+  key: "p",
+  groupName: "moon",
+  description: "Moon BVH visualization",
+  defaultEnabled: false,
+});
+
+bvhDebuggerService.setGroupConfig("moon", {
+  color: 0x00ff00,
+  opacity: 0.3,
+  depth: 8,
+  showLeafNodes: true,
+  showInternalNodes: true,
+  wireframe: true,
+});
+
+bvhDebuggerService.registerGroupToggle({
+  key: "o",
+  groupName: "train",
+  description: "Train head visualization",
+  defaultEnabled: false,
+});
+
+bvhDebuggerService.setGroupConfig("train", {
+  color: 0xff0000,
+  opacity: 0.3,
+  depth: 8,
+  showLeafNodes: true,
+  showInternalNodes: true,
+  wireframe: true,
+});
+
+// Register objects for automatic BVH updates
+bvhDebuggerService.registerObject("moon", moon1.object, () => moon1.getId());
+bvhDebuggerService.registerObject("train", trainHead.object, () =>
+  trainHead.getId()
+);
+
+// Initialize ray debugger
+const rayDebuggerService = rayDebugger();
+rayDebuggerService.initialize(sceneManager.scene, true);
+
 // Create controllers
 const playerController = new PointerLockCameraController();
 const trainController = new TrainController();
@@ -90,6 +141,8 @@ function animate(): void {
   gameManager.update(delta);
 
   updateHUD(delta);
+  updateBVHDebugger();
+  updateRayDebugger();
 
   sceneManager.renderer.render(
     sceneManager.scene,
@@ -122,6 +175,14 @@ function updateHUD(delta: number) {
     )}ms | Hits: ${stats.frameRaycasts}`;
     performanceLogTimer = 0;
   }
+}
+
+function updateBVHDebugger() {
+  bvhDebuggerService.updateAll();
+}
+
+function updateRayDebugger() {
+  rayDebuggerService.updateAll();
 }
 
 window.addEventListener("resize", () => {

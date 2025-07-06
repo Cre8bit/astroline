@@ -10,6 +10,9 @@ export class PhysicsManager {
   private previousSpeeds: Map<string, number> = new Map(); // Track previous speeds for momentum
   private surfaceConstraintsManager: SurfaceConstraintsManager;
 
+  private gravityForceCache = new Map<string, THREE.Vector3>();
+  private directionCache = new Map<string, THREE.Vector3>();
+
   constructor(moons: Moon[]) {
     this.moons = moons;
     this.surfaceConstraintsManager = new SurfaceConstraintsManager();
@@ -53,42 +56,64 @@ export class PhysicsManager {
     });
   }
 
-  private updateGravityDebugRay(
-    entity: Entity,
-    gravityForce: THREE.Vector3
-  ): void {
+  public registerEntityForRayDebugging(entity: Entity): void {
     const rayDebuggerService = rayDebugger();
     if (!rayDebuggerService) return;
 
-    const entityPos = entity.getPosition();
+    rayDebuggerService.registerRayUpdater(
+      "gravity",
+      entity.getId(),
+      entity,
+      (entity: Entity) => {
+        const cachedGravityForce = this.gravityForceCache.get(entity.getId());
+        if (!cachedGravityForce || cachedGravityForce.length() === 0)
+          return null;
 
-    rayDebuggerService.setRay("gravity", entity.getId(), {
-      id: entity.getId(),
-      origin: entityPos,
-      direction: gravityForce.clone().normalize(),
-      magnitude: gravityForce.length(),
-    });
-  }
-  
-  private updateDirectionDebugRay(
-    entity: Entity,
-    direction: THREE.Vector3
-  ): void {
-    const rayDebuggerService = rayDebugger();
-    if (!rayDebuggerService) return;
+        return {
+          id: entity.getId(),
+          origin: entity.getPosition(),
+          direction: cachedGravityForce.clone().normalize(),
+          magnitude: cachedGravityForce.length(),
+        };
+      }
+    );
 
-    const entityPos = entity.getPosition();
+    rayDebuggerService.registerRayUpdater(
+      "direction",
+      entity.getId(),
+      entity,
+      (entity: Entity) => {
+        const cachedDirection = this.directionCache.get(entity.getId());
+        if (!cachedDirection || cachedDirection.length() === 0) return null;
 
-    rayDebuggerService.setRay("direction", entity.getId(), {
-      id: entity.getId(),
-      origin: entityPos,
-      direction: direction.clone().normalize(),
-      magnitude: direction.length(),
-    });
+        return {
+          id: entity.getId(),
+          origin: entity.getPosition(),
+          direction: cachedDirection.clone().normalize(),
+          magnitude: cachedDirection.length(),
+        };
+      }
+    );
   }
 
   public getSurfaceConstraintsManager(): SurfaceConstraintsManager {
     return this.surfaceConstraintsManager;
+  }
+
+  /**
+   * Clear cached debug data for an entity
+   */
+  public clearEntityCache(entityId: string): void {
+    this.gravityForceCache.delete(entityId);
+    this.directionCache.delete(entityId);
+  }
+
+  /**
+   * Clear all cached debug data
+   */
+  public clearAllCaches(): void {
+    this.gravityForceCache.clear();
+    this.directionCache.clear();
   }
 
   public applyPhysicsTo(
@@ -122,12 +147,15 @@ export class PhysicsManager {
     const { gravityForce, gravityQuat, closestMoon } =
       this.processMoonAttraction(entity);
 
-    // Update debug visualization
-    this.updateGravityDebugRay(entity, gravityForce);
+    this.gravityForceCache.set(entity.getId(), gravityForce.clone());
 
     if (!baseIntent) {
+      const resultDirection = gravityForce.clone().normalize();
+
+      this.directionCache.set(entity.getId(), resultDirection.clone());
+
       return {
-        direction: gravityForce.clone().normalize(),
+        direction: resultDirection,
         speed: gravityForce.length(),
         targetRotation: gravityQuat,
       };
@@ -145,7 +173,8 @@ export class PhysicsManager {
       baseIntent.speed
     );
 
-    this.updateDirectionDebugRay(entity, direction);
+    // Cache direction for debug ray visualization
+    this.directionCache.set(entity.getId(), direction.clone());
 
     // Blend rotations (input orientation → gravity orientation)
     let finalQuat = gravityQuat;

@@ -25,6 +25,18 @@ export interface GroupToggleConfig {
   defaultEnabled?: boolean;
 }
 
+export interface RayUpdateCallback {
+  (entity: any, ...args: any[]): DebugRay | null;
+}
+
+export interface RegisteredRayUpdater {
+  groupName: string;
+  entityId: string;
+  callback: RayUpdateCallback;
+  entity: any;
+  additionalArgs?: any[];
+}
+
 /**
  * Ray Debugger Service - Singleton for debug ray visualization
  */
@@ -39,6 +51,9 @@ export class RayDebuggerService {
   private keyBindings = new Map<string, GroupToggleConfig>();
   private keyListener?: (event: KeyboardEvent) => void;
   private initialized: boolean = false;
+
+  // Track registered ray updaters for automatic updates
+  private registeredUpdaters: RegisteredRayUpdater[] = [];
 
   private constructor() {}
 
@@ -329,12 +344,66 @@ export class RayDebuggerService {
   }
 
   /**
+   * Register a callback for automatic ray updates
+   */
+  public registerRayUpdater(
+    groupName: string,
+    entityId: string,
+    entity: any,
+    callback: RayUpdateCallback,
+    additionalArgs?: any[]
+  ): void {
+    this.registeredUpdaters.push({
+      groupName,
+      entityId,
+      callback,
+      entity,
+      additionalArgs,
+    });
+  }
+
+  /**
+   * Unregister a ray updater
+   */
+  public unregisterRayUpdater(groupName: string, entityId: string): void {
+    this.registeredUpdaters = this.registeredUpdaters.filter(
+      (updater) => !(updater.groupName === groupName && updater.entityId === entityId)
+    );
+  }
+
+  /**
+   * Update all registered ray updaters
+   * Call this once per frame instead of manually updating each ray
+   */
+  public updateAll(): void {
+    if (!this.enabled) return;
+
+    for (const updater of this.registeredUpdaters) {
+      if (this.isGroupToggled(updater.groupName)) {
+        try {
+          const rayData = updater.callback(
+            updater.entity,
+            ...(updater.additionalArgs || [])
+          );
+
+          if (rayData) {
+            this.setRay(updater.groupName, updater.entityId, rayData);
+          }
+        } catch (error) {
+          console.warn(`Error updating ray for ${updater.groupName}:${updater.entityId}`, error);
+        }
+      }
+    }
+  }
+
+  /**
    * Clean up all resources
    */
   public dispose(): void {
     console.log("Disposing RayDebuggerService...");
     this.clearAllRays();
     this.groupConfigs.clear();
+    this.registeredUpdaters.length = 0; // Clear array
 
     // Remove key listener
     if (this.keyListener) {

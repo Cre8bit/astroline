@@ -17,7 +17,7 @@ abstract class ModelLoader {
 
   static async preload(paths: string[]): Promise<void[]> {
     return Promise.all(
-      paths.map((path) => (this as any).load(path).then(() => undefined))
+      paths.map((path) => this.load(path).then(() => undefined))
     );
   }
 
