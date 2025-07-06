@@ -1,27 +1,33 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
-import type { RayDebuggerManager } from "./rayDebuggerManager";
+import type { RayDebuggerManager } from "../utils/rayDebuggerManager";
 import * as THREE from "three";
 
-export interface SurfaceData {
+interface SurfaceData {
   point: THREE.Vector3;
   normal: THREE.Vector3;
 }
 
-export interface SurfaceConstraintResult {
+interface SurfaceConstraintResult {
   direction: THREE.Vector3;
   speed: number;
   surfaceRotation?: THREE.Quaternion;
 }
 
-export interface PredictiveCollisionResult {
+interface PredictiveCollisionResult {
   willCollide: boolean;
   urgency: number;
 }
 
+export interface RaycastingPerformance {
+  trueRaycasts: number;
+  cacheHits: number;
+  averageRaycastTime: number;
+  cacheHitRate: number;
+}
+
 export class SurfaceConstraintsManager {
   private rayDebugger?: RayDebuggerManager;
-  private previousSurfaceNormals: Map<string, THREE.Vector3> = new Map();
   private surfaceDataCache: Map<
     string,
     {
@@ -30,10 +36,47 @@ export class SurfaceConstraintsManager {
       timestamp: number;
     }
   > = new Map();
-  private readonly CACHE_DURATION = 10; // Cache for 2 seconds to reduce raycasting
+  private readonly CACHE_DURATION = 100; // Cache for 10ms to reduce raycasting
+  private performanceStats = {
+    trueRaycasts: 0,
+    cacheHits: 0,
+    averageRaycastTime: 0,
+  };
 
   public setRayDebugger(rayDebugger: RayDebuggerManager): void {
     this.rayDebugger = rayDebugger;
+
+    this.rayDebugger.setGroupConfig("moon-surface", {
+      color: 0x0099ff,
+      scaleFactor: 1,
+      maxLength: 100,
+      headLength: undefined,
+      headWidth: undefined,
+      opacity: 0.8,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: "m",
+      groupName: "moon-surface",
+      description: "Moon surface connection debug visualization",
+      defaultEnabled: true,
+    });
+
+    this.rayDebugger.setGroupConfig("surface-normal", {
+      color: 0xff9900,
+      scaleFactor: 1,
+      maxLength: 20,
+      headLength: undefined,
+      headWidth: undefined,
+      opacity: 0.9,
+    });
+
+    this.rayDebugger.registerGroupToggle({
+      key: "n",
+      groupName: "surface-normal",
+      description: "Surface normal debug visualization",
+      defaultEnabled: true,
+    });
   }
 
   public findClosestPointOnMoonSurface(
@@ -41,7 +84,6 @@ export class SurfaceConstraintsManager {
     moon: Moon
   ): SurfaceData | null {
     const entityPos = entity.getPosition();
-    const moonPos = moon.getPosition();
     const entityId = entity.getId();
     const now = Date.now();
 
@@ -49,37 +91,68 @@ export class SurfaceConstraintsManager {
     const cachedData = this.surfaceDataCache.get(entityId);
     if (cachedData && now - cachedData.timestamp < this.CACHE_DURATION) {
       // Use cached data
-      return {
+      this.performanceStats.cacheHits++;
+
+      const surfaceData = {
         point: cachedData.point,
         normal: cachedData.normal,
       };
+
+      // Update debug rays for cached data too
+      this.updateMoonSurfaceDebugRay(entity, surfaceData.point);
+      this.updateSurfaceNormalDebugRay(
+        entity,
+        surfaceData.point,
+        surfaceData.normal
+      );
+
+      return surfaceData;
     }
 
-      // Perform actual raycasting
-      const raycastResult = this.performRaycast(entity, moon);
-      if (raycastResult) {
-        // Cache the result
-        this.surfaceDataCache.set(entityId, {
-          point: raycastResult.point,
-          normal: raycastResult.normal,
-          timestamp: now,
-        });
+    // Perform actual raycasting
+    const raycastStart = performance.now();
+    const raycastResult = this.performRaycast(entity, moon);
+    const raycastTime = performance.now() - raycastStart;
 
-        return raycastResult;
-      }
+    this.performanceStats.trueRaycasts++;
+    this.performanceStats.averageRaycastTime =
+      (this.performanceStats.averageRaycastTime *
+        (this.performanceStats.trueRaycasts - 1) +
+        raycastTime) /
+      this.performanceStats.trueRaycasts;
 
-      return null;
+    if (raycastResult) {
+      // Cache the result
+      this.surfaceDataCache.set(entityId, {
+        point: raycastResult.point,
+        normal: raycastResult.normal,
+        timestamp: now,
+      });
+
+      // Update debug rays automatically
+      this.updateMoonSurfaceDebugRay(entity, raycastResult.point);
+      this.updateSurfaceNormalDebugRay(
+        entity,
+        raycastResult.point,
+        raycastResult.normal
+      );
+
+      return raycastResult;
+    }
+
+    return null;
   }
 
   private performRaycast(entity: Entity, moon: Moon): SurfaceData | null {
     const entityPos = entity.getPosition();
     const moonPos = moon.getPosition();
 
-    // Primary raycast for surface point
+    // Primary raycast for surface point using BVH-accelerated raycasting
     const raycaster = new THREE.Raycaster();
     const direction = moonPos.clone().sub(entityPos).normalize();
     raycaster.set(entityPos, direction);
 
+    // BVH raycasting is automatically used when THREE.Mesh.prototype.raycast is overridden
     const intersects = raycaster.intersectObject(moon.object, true);
 
     if (intersects.length > 0) {
@@ -87,9 +160,19 @@ export class SurfaceConstraintsManager {
       const surfacePoint = intersection.point;
 
       // Use face normal if available, otherwise geometric normal
-      const surfaceNormal = intersection.face
-        ? intersection.face.normal.clone()
-        : surfacePoint.clone().sub(moonPos).normalize();
+      let surfaceNormal: THREE.Vector3;
+      if (intersection.face && intersection.face.normal) {
+        // Transform face normal to world space
+        const worldNormal = intersection.face.normal.clone();
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(
+          intersection.object.matrixWorld
+        );
+        worldNormal.applyMatrix3(normalMatrix).normalize();
+        surfaceNormal = worldNormal;
+      } else {
+        // Fallback to geometric normal
+        surfaceNormal = surfacePoint.clone().sub(moonPos).normalize();
+      }
 
       return {
         point: surfacePoint,
@@ -99,7 +182,6 @@ export class SurfaceConstraintsManager {
 
     return null;
   }
-
 
   public applySurfaceConstraints(
     entity: Entity,
@@ -360,6 +442,20 @@ export class SurfaceConstraintsManager {
     // Clamp speed factor to reasonable bounds
     return Math.max(0.4, Math.min(1.6, speedFactor));
   }
+  public getPerformanceStats(): RaycastingPerformance {
+    return {
+      trueRaycasts: this.performanceStats.trueRaycasts,
+      cacheHits: this.performanceStats.cacheHits,
+      averageRaycastTime: this.performanceStats.averageRaycastTime,
+      cacheHitRate:
+        this.performanceStats.trueRaycasts > 0
+          ? (this.performanceStats.cacheHits /
+              (this.performanceStats.trueRaycasts +
+                this.performanceStats.cacheHits)) *
+            100
+          : 0,
+    };
+  }
 
   public cleanupExpiredCache(): void {
     const now = Date.now();
@@ -368,5 +464,38 @@ export class SurfaceConstraintsManager {
         this.surfaceDataCache.delete(key);
       }
     }
+  }
+
+  public updateMoonSurfaceDebugRay(
+    entity: Entity,
+    moonSurfacePoint: THREE.Vector3
+  ): void {
+    if (!this.rayDebugger) return;
+
+    const entityPos = entity.getPosition();
+    const entityToSurface = moonSurfacePoint.clone().sub(entityPos);
+    const distance = entityToSurface.length();
+
+    this.rayDebugger.setRay("moon-surface", entity.getId(), {
+      id: entity.getId(),
+      origin: entityPos,
+      direction: entityToSurface.clone().normalize(),
+      magnitude: distance,
+    });
+  }
+
+  public updateSurfaceNormalDebugRay(
+    entity: Entity,
+    surfacePoint: THREE.Vector3,
+    surfaceNormal: THREE.Vector3
+  ): void {
+    if (!this.rayDebugger) return;
+
+    this.rayDebugger.setRay("surface-normal", entity.getId(), {
+      id: `${entity.getId()}-normal`,
+      origin: surfacePoint,
+      direction: surfaceNormal.clone().normalize(),
+      magnitude: 5,
+    });
   }
 }

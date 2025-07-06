@@ -1,7 +1,7 @@
 import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
-import type { MovementIntent } from "./interfaces/movementIntent";
-import type { RayDebuggerManager } from "./rayDebuggerManager";
+import type { MovementIntent } from "./interfaces/movementIntent.interface";
+import type { RayDebuggerManager } from "../utils/rayDebuggerManager";
 import { SurfaceConstraintsManager } from "./surfaceConstraintsManager";
 import * as THREE from "three";
 
@@ -52,38 +52,6 @@ export class PhysicsManager {
       description: "Entity direction debug visualization",
       defaultEnabled: true,
     });
-
-    this.rayDebugger.setGroupConfig("moon-surface", {
-      color: 0x0099ff,
-      scaleFactor: 1,
-      maxLength: 100,
-      headLength: undefined,
-      headWidth: undefined,
-      opacity: 0.8,
-    });
-
-    this.rayDebugger.registerGroupToggle({
-      key: "m",
-      groupName: "moon-surface",
-      description: "Moon surface connection debug visualization",
-      defaultEnabled: true,
-    });
-
-    this.rayDebugger.setGroupConfig("surface-normal", {
-      color: 0xff9900,
-      scaleFactor: 5,
-      maxLength: 20,
-      headLength: 2,
-      headWidth: 1,
-      opacity: 0.9,
-    });
-
-    this.rayDebugger.registerGroupToggle({
-      key: "n",
-      groupName: "surface-normal",
-      description: "Surface normal debug visualization",
-      defaultEnabled: true,
-    });
   }
 
   private updateGravityDebugRay(
@@ -106,7 +74,9 @@ export class PhysicsManager {
     direction: THREE.Vector3
   ): void {
     if (!this.rayDebugger) return;
+
     const entityPos = entity.getPosition();
+
     this.rayDebugger.setRay("direction", entity.getId(), {
       id: entity.getId(),
       origin: entityPos,
@@ -114,36 +84,9 @@ export class PhysicsManager {
       magnitude: direction.length(),
     });
   }
-  private updateMoonSurfaceDebugRay(
-    entity: Entity,
-    moonSurfacePoint: THREE.Vector3
-  ): void {
-    if (!this.rayDebugger) return;
 
-    const entityPos = entity.getPosition();
-    const entityToSurface = moonSurfacePoint.clone().sub(entityPos);
-    const distance = entityToSurface.length();
-
-    this.rayDebugger.setRay("moon-surface", entity.getId(), {
-      id: entity.getId(),
-      origin: entityPos,
-      direction: entityToSurface.clone().normalize(),
-      magnitude: distance,
-    });
-  }
-  private updateSurfaceNormalDebugRay(
-    entity: Entity,
-    surfacePoint: THREE.Vector3,
-    surfaceNormal: THREE.Vector3
-  ): void {
-    if (!this.rayDebugger) return;
-
-    this.rayDebugger.setRay("surface-normal", entity.getId(), {
-      id: `${entity.getId()}-normal`,
-      origin: surfacePoint,
-      direction: surfaceNormal.clone().normalize(),
-      magnitude: 5,
-    });
+  public getSurfaceConstraintsManager(): SurfaceConstraintsManager {
+    return this.surfaceConstraintsManager;
   }
 
   public applyPhysicsTo(
@@ -227,13 +170,6 @@ export class PhysicsManager {
             closestMoon
           );
         if (surfaceData) {
-          this.updateMoonSurfaceDebugRay(entity, surfaceData.point);
-          this.updateSurfaceNormalDebugRay(
-            entity,
-            surfaceData.point,
-            surfaceData.normal
-          );
-
           // Apply surface constraints to movement
           const constraintResult =
             this.surfaceConstraintsManager.applySurfaceConstraints(

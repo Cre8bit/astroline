@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
-import type { MovementIntent } from "../core/interfaces/movementIntent";
+import type { MovementIntent } from "../core/interfaces/movementIntent.interface";
 import { CameraController } from "./base/cameraController";
 import { PlayerModeEnum } from "../core/enums/playerMode.enum";
 import { Player } from "../entities/player";

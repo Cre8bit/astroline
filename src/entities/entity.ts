@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MovementIntent } from "../core/interfaces/movementIntent";
+import type { MovementIntent } from "../core/interfaces/movementIntent.interface";
 
 export abstract class Entity {
   protected name: string = "Entity";

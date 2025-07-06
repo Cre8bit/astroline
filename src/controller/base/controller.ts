@@ -1,4 +1,4 @@
-import type { MovementIntent } from "../../core/interfaces/movementIntent";
+import type { MovementIntent } from "../../core/interfaces/movementIntent.interface";
 import type { Entity } from "../../entities/entity";
 
 export abstract class Controller {

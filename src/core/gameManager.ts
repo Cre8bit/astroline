@@ -9,7 +9,8 @@ import { PlayerController } from "../controller/base/playerController";
 import { PhysicsManager } from "./physicsManager";
 import { Entity } from "../entities/entity";
 import { Moon } from "../entities/moon";
-import { RayDebuggerManager } from "./rayDebuggerManager";
+import { RayDebuggerManager } from "../utils/rayDebuggerManager";
+import type { RaycastingPerformance } from "./surfaceConstraintsManager";
 
 export class GameManager {
   private readonly entities: Entity[];
@@ -80,6 +81,13 @@ export class GameManager {
 
   public getRayDebugger(): RayDebuggerManager {
     return this.rayDebugger;
+  }
+
+  public getPhysicsManager(): PhysicsManager {
+    return this.physicsManager;
+  }
+  public getRaycastingPerformance(): RaycastingPerformance {
+    return this.physicsManager.getSurfaceConstraintsManager().getPerformanceStats();
   }
 
   private processPlayerTrainBindings(delta: number) {

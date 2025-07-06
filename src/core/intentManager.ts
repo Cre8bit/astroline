@@ -1,5 +1,5 @@
 import type { Entity } from "../entities/entity";
-import type { MovementIntent } from "./interfaces/movementIntent";
+import type { MovementIntent } from "./interfaces/movementIntent.interface";
 
 export class IntentManager {
   private baseIntents = new Map<Entity, MovementIntent>();

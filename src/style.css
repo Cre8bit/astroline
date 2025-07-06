@@ -31,3 +31,17 @@ canvas {
   z-index: 1000;
   pointer-events: none;
 }
+
+#hud-performance {
+  position: fixed;
+  top: 70px;
+  left: 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+  z-index: 1000;
+  pointer-events: none;
+}

@@ -4,24 +4,31 @@ import { Player } from "./entities/player";
 import { Moon } from "./entities/moon";
 import { Cristal } from "./entities/cristal";
 import { TrainHead } from "./entities/trainHead";
-import { GLBModelLoader } from "./core/modelLoader";
+import { GLBModelLoader } from "./utils/modelLoader";
 import * as THREE from "three";
 import { PointerLockCameraController } from "./controller/pointerLockCameraController";
 import { TrainController } from "./controller/trainController";
 import { ControllerManager } from "./core/controllerManager";
 import { GameManager } from "./core/gameManager";
+import { initializeBVH } from "./utils/bvhInit";
+
+// Initialize BVH methods on BufferGeometry prototype
+initializeBVH();
 
 //Player coordinates HUD
 const hud = document.getElementById("hud-coordinates")!;
 // Add FPS counter element
 const fpsCounter = document.getElementById("hud-fps")!;
 let lastFrameTime = performance.now();
+// Add performance monitoring element
+const performanceCounter = document.getElementById("hud-performance")!;
+let performanceLogTimer = 0;
 
 // Initialize clock for animation timing
 const clock = new THREE.Clock();
 
 //Load models
-const moonModel = await GLBModelLoader.load("/models/moon/Moon.glb");
+const moonModel = await GLBModelLoader.loadWithBVH("/models/moon/Moon.glb");
 const cristalModel = await GLBModelLoader.load("/models/cristal/Cristal.glb");
 const trainHeadModel = await GLBModelLoader.load(
   "/models/train/head/Train_Head.glb"
@@ -38,11 +45,16 @@ const player = new Player(sceneManager.scene, {
   position: [-30, 80, 0],
   rotation: [0, -Math.PI / 2, 0],
 });
+
 const moon1 = new Moon(sceneManager.scene, {
-  object: moonModel.clone(),
+  object:  moonModel.clone(),
   scale: 0.5,
 });
-const cristal = new Cristal(sceneManager.scene, { object: cristalModel.clone() });
+
+const cristal = new Cristal(sceneManager.scene, {
+  object: cristalModel.clone(),
+});
+
 const trainHead = new TrainHead(sceneManager.scene, {
   object: trainHeadModel.clone(),
   position: [0, 80, 0],
@@ -73,25 +85,42 @@ function animate(): void {
 
   gameManager.update(delta);
 
-  // Update player coordinates HUD
-  const playerPosition = player.getPosition();
-  hud.textContent = `X: ${playerPosition.x.toFixed(
-    2
-  )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
-  // Update FPS counter
-  const currentFrameTime = performance.now();
-  const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
-  lastFrameTime = currentFrameTime;
-  fpsCounter.textContent = `FPS: ${fps}`;
+  updateHUD(delta);
 
   sceneManager.renderer.render(
     sceneManager.scene,
     playerController.getCamera()
   );
-  // debugger;
 }
 animate();
 
+function updateHUD(delta: number) {
+    // Update player coordinates HUD
+    const playerPosition = player.getPosition();
+    hud.textContent = `X: ${playerPosition.x.toFixed(
+      2
+    )} Y: ${playerPosition.y.toFixed(2)} Z: ${playerPosition.z.toFixed(2)}`;
+
+    // Update FPS counter
+    const currentFrameTime = performance.now();
+    const fps = (1 / ((currentFrameTime - lastFrameTime) / 1000)).toFixed(1);
+    lastFrameTime = currentFrameTime;
+    fpsCounter.textContent = `FPS: ${fps}`;
+
+    // Log BVH performance stats every 5 seconds
+    performanceLogTimer += delta;
+    if (performanceLogTimer > 1.0) {
+      const stats = gameManager.getRaycastingPerformance();
+
+      // Update performance HUD
+      performanceCounter.innerHTML = `
+        <div>BVH: ${stats.averageRaycastTime.toFixed(3)}ms | Cache: ${stats.cacheHitRate.toFixed(1)}%</div>
+        <div>Raycasts: ${stats.trueRaycasts} | Cache Hits: ${stats.cacheHits}</div>
+      `;
+      performanceLogTimer = 0;
+    }
+  }
+  
 window.addEventListener("resize", () => {
   sceneManager.resizeRendererToDisplaySize();
   playerController.getCamera().aspect = window.innerWidth / window.innerHeight;
