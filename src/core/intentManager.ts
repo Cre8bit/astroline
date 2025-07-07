@@ -8,6 +8,9 @@ export class IntentManager {
   setBaseIntent(entity: Entity, intent: MovementIntent): void {
     this.baseIntents.set(entity, intent);
   }
+  getBaseIntent(entity: Entity): MovementIntent | undefined {
+    return this.baseIntents.get(entity);
+  }
   setBaseIntents(intents: Map<Entity, MovementIntent>) {
     this.baseIntents.clear();
     for (const [entity, intent] of intents.entries()) {
@@ -16,6 +19,9 @@ export class IntentManager {
   }
   setOverrideIntent(entity: Entity, override: MovementIntent): void {
     this.overrideIntents.set(entity, override);
+  }
+  getOverrideIntent(entity: Entity): MovementIntent | undefined {
+    return this.overrideIntents.get(entity);
   }
   setOverrideIntents(intents: Map<Entity, MovementIntent>) {
     this.overrideIntents.clear();
@@ -28,9 +34,15 @@ export class IntentManager {
   }
   getAllIntents(): Map<Entity, MovementIntent> {
     const result = new Map<Entity, MovementIntent>();
-    for (const [entity, baseIntent] of this.baseIntents.entries()) {
-      const finalIntent = this.overrideIntents.get(entity) ?? baseIntent;
-      result.set(entity, finalIntent);
+    const entities = new Set<Entity>([
+      ...this.baseIntents.keys(),
+      ...this.overrideIntents.keys(),
+    ]);
+    for (const entity of entities) {
+      const intent = this.getIntent(entity);
+      if (intent) {
+        result.set(entity, intent);
+      }
     }
     return result;
   }

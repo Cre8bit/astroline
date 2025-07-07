@@ -5,17 +5,12 @@ export class TrainHead extends Entity {
   private readonly riderlocalOffset = new THREE.Vector3(0, 1.8, 0);
   constructor(
     scene: THREE.Scene,
-    params: {
-      object: THREE.Object3D;
-      position?: THREE.Vector3 | [number, number, number];
-      rotation?: THREE.Euler | THREE.Quaternion | [number, number, number];
-      scale?: THREE.Vector3 | number;
+    params: ConstructorParameters<typeof Entity>[1] & {
       riderOffset?: THREE.Vector3 | [number, number, number];
     }
   ) {
     super(scene, params);
-    this.name = "TrainHead";
-    this.mass = 1;
+    this.setMass(2);
     if (params.riderOffset) {
       this.setRiderOffset(params.riderOffset);
     }

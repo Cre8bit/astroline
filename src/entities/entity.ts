@@ -4,14 +4,15 @@ import type { MovementIntent } from "../core/interfaces/movementIntent.interface
 export abstract class Entity {
   protected name: string = "Entity";
   private id: string = crypto.randomUUID();
-  public position: THREE.Vector3;
-  public rotation: THREE.Quaternion;
+  private position: THREE.Vector3;
+  private rotation: THREE.Quaternion;
   public object: THREE.Object3D;
   protected scene: THREE.Scene;
-  public mass: number = 1;
+  private mass: number = 1;
   public ignorePhysics: boolean = false;
-  public localObjectPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-  public localObjectRotation: THREE.Quaternion = new THREE.Quaternion();
+  private localObjectPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  private localObjectRotation: THREE.Quaternion = new THREE.Quaternion();
+  private scale: THREE.Vector3 = new THREE.Vector3(1, 1, 1);
   constructor(
     scene: THREE.Scene,
     params: {
@@ -19,6 +20,8 @@ export abstract class Entity {
       position?: THREE.Vector3 | [number, number, number];
       rotation?: THREE.Euler | THREE.Quaternion | [number, number, number];
       scale?: THREE.Vector3 | number;
+      mass?: number;
+      name?: string;
       localObjectPosition?: THREE.Vector3 | [number, number, number];
       localObjectRotation?:
         | THREE.Euler
@@ -28,6 +31,14 @@ export abstract class Entity {
   ) {
     this.object = params.object ?? new THREE.Object3D();
     this.scene = scene;
+
+    if (params.name) {
+      this.setName(params.name);
+    }
+
+    if(params.mass) {
+      this.mass = params.mass;
+    }
 
     // Initialize entity position and rotation (source of truth)
     this.position =
@@ -69,17 +80,17 @@ export abstract class Entity {
     // Initialize object scale
     if (params.scale) {
       if (params.scale instanceof THREE.Vector3) {
-        this.setObjectScale(params.scale);
+        this.scale.copy(params.scale);
       } else {
-        this.setObjectScale(
-          new THREE.Vector3(params.scale, params.scale, params.scale)
-        );
+        this.scale.set(params.scale, params.scale, params.scale);
       }
-    } else {
-      this.setObjectScale(new THREE.Vector3(1, 1, 1));
     }
+
     // Update object transform based on entity position + local offset
     this.updateObjectTransform();
+
+    // Apply initial scale after transform update
+    this.object.scale.copy(this.scale);
 
     this.scene.add(this.object);
   }
@@ -104,12 +115,15 @@ export abstract class Entity {
     const finalMatrix = new THREE.Matrix4();
     finalMatrix.multiplyMatrices(entityMatrix, localMatrix);
 
-    // Apply final transformation to object
-    finalMatrix.decompose(
-      this.object.position,
-      this.object.quaternion,
-      this.object.scale
-    );
+    // Apply transformation to object (position and rotation only)
+    const tempPosition = new THREE.Vector3();
+    const tempQuaternion = new THREE.Quaternion();
+    const tempScale = new THREE.Vector3();
+
+    finalMatrix.decompose(tempPosition, tempQuaternion, tempScale);
+
+    this.object.position.copy(tempPosition);
+    this.object.quaternion.copy(tempQuaternion);
     this.object.rotation.setFromQuaternion(this.object.quaternion);
   }
   setPosition(position: THREE.Vector3): void;
@@ -210,24 +224,31 @@ export abstract class Entity {
     }
     this.updateObjectTransform();
   }
-  setObjectScale(scale: THREE.Vector3): void;
-  setObjectScale(x: number, y: number, z: number): void;
-  setObjectScale(
-    arg1: THREE.Vector3 | number,
-    arg2?: number,
-    arg3?: number
-  ): void {
-    if (this.object) {
-      if (arg1 instanceof THREE.Vector3) {
-        this.object.scale.copy(arg1);
-      } else if (
-        typeof arg1 === "number" &&
-        typeof arg2 === "number" &&
-        typeof arg3 === "number"
-      ) {
-        this.object.scale.set(arg1, arg2, arg3);
-      }
+  setScale(scale: THREE.Vector3): void;
+  setScale(x: number, y: number, z: number): void;
+  setScale(arg1: THREE.Vector3 | number, arg2?: number, arg3?: number): void {
+    if (arg1 instanceof THREE.Vector3) {
+      this.scale.copy(arg1);
+    } else if (
+      typeof arg1 === "number" &&
+      typeof arg2 === "number" &&
+      typeof arg3 === "number"
+    ) {
+      this.scale.set(arg1, arg2, arg3);
     }
+
+    if (this.object) {
+      this.object.scale.copy(this.scale);
+    }
+  }
+  getScale(): THREE.Vector3 {
+    return this.scale.clone();
+  }
+  getMass(): number {
+    return this.mass;
+  }
+  setMass(mass: number): void {
+    this.mass = mass;
   }
   getPosition(): THREE.Vector3 {
     return this.position.clone();
@@ -264,5 +285,8 @@ export abstract class Entity {
   }
   getName(): string {
     return this.name;
+  }
+  setName(name: string): void {
+    this.name = name;
   }
 }

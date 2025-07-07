@@ -50,23 +50,45 @@ const starfield = new Starfield(sceneManager.scene);
 
 //Setup entities
 const player = new Player(sceneManager.scene, {
+  name: "Player",
   position: [-30, 80, 0],
   rotation: [0, -Math.PI / 2, 0],
 });
 
 const moon1 = new Moon(sceneManager.scene, {
   object: moonModel.clone(),
-  scale: 0.5,
+  name: "Moon_1",
+  scale: 1,
+  mass: 1000,
+});
+
+const moon2 = new Moon(sceneManager.scene, {
+  object: moonModel.clone(),
+  name: "Moon_2",
+  position: [70, 100, 0],
+  rotation: [0, Math.PI / 2, 0],
+  scale: 0.2,
+  mass: 100,
 });
 
 const cristal = new Cristal(sceneManager.scene, {
   object: cristalModel.clone(),
+  name: "Cristal_1",
   position: [0, 72, 0],
 });
 
 const trainHead = new TrainHead(sceneManager.scene, {
   object: trainHeadModel.clone(),
+  name: "TrainHead_player",
   position: [0, 90, 0],
+  riderOffset: [0, 1.8, 0],
+});
+
+const trainHead_bot = new TrainHead(sceneManager.scene, {
+  object: trainHeadModel.clone(),
+  name: "TrainHead_bot",
+  position: [30, 110, 10],
+  rotation: [Math.PI, Math.PI / 3, -Math.PI / 4],
   riderOffset: [0, 1.8, 0],
 });
 
@@ -119,15 +141,17 @@ rayDebuggerService.initialize(sceneManager.scene, true);
 // Create controllers
 const playerController = new PointerLockCameraController();
 const trainController = new TrainController();
+const trainController_bot = new TrainController();
 
 // Bind controllers
 const controllerManager = new ControllerManager();
 controllerManager.bind(player, playerController);
 controllerManager.bind(trainHead, trainController);
+// controllerManager.bind(trainHead_bot, trainController_bot);
 
 // Game manager
 const gameManager = new GameManager(
-  [player, trainHead, moon1],
+  [player, trainHead, moon1, moon2, trainHead_bot],
   controllerManager,
   sceneManager.scene
 );

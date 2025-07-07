@@ -25,7 +25,7 @@ export class PhysicsManager {
 
     rayDebuggerService.setGroupConfig("gravity", {
       color: 0xff0000,
-      scaleFactor: 10,
+      scaleFactor: 2,
       maxLength: 50,
       headLength: undefined,
       headWidth: undefined,
@@ -41,7 +41,7 @@ export class PhysicsManager {
 
     rayDebuggerService.setGroupConfig("direction", {
       color: 0x00ff00,
-      scaleFactor: 10,
+      scaleFactor: 5,
       maxLength: 30,
       headLength: undefined,
       headWidth: undefined,
@@ -149,35 +149,26 @@ export class PhysicsManager {
 
     this.gravityForceCache.set(entity.getId(), gravityForce.clone());
 
-    if (!baseIntent) {
-      const resultDirection = gravityForce.clone().normalize();
-
-      this.directionCache.set(entity.getId(), resultDirection.clone());
-
-      return {
-        direction: resultDirection,
-        speed: gravityForce.length(),
-        targetRotation: gravityQuat,
-      };
-    }
-
-    // Mix direction: sum input direction and gravity force
-    const totalForce = baseIntent.direction
-      .clone()
-      .multiplyScalar(baseIntent.speed)
-      .add(gravityForce);
-
-    let direction = totalForce.clone().normalize();
-    let speed = this.calculatePreservedSpeed(
-      totalForce.length(),
-      baseIntent.speed
-    );
-
-    // Cache direction for debug ray visualization
-    this.directionCache.set(entity.getId(), direction.clone());
-
-    // Blend rotations (input orientation → gravity orientation)
+    let direction: THREE.Vector3;
+    let speed: number;
     let finalQuat = gravityQuat;
+
+    if (!baseIntent) {
+      direction = gravityForce.clone().normalize();
+      speed = gravityForce.length();
+    } else {
+      // Mix direction: sum input direction and gravity force
+      const totalForce = baseIntent.direction
+        .clone()
+        .multiplyScalar(baseIntent.speed)
+        .add(gravityForce);
+
+      direction = totalForce.clone().normalize();
+      speed = this.calculatePreservedSpeed(
+        totalForce.length(),
+        baseIntent.speed
+      );
+    }
 
     // Apply surface constraints if near a moon
     if (closestMoon) {
@@ -239,6 +230,9 @@ export class PhysicsManager {
       }
     }
 
+    // Cache direction for debug ray visualization
+    this.directionCache.set(entity.getId(), direction.clone());
+
     return {
       direction,
       speed,
@@ -251,26 +245,63 @@ export class PhysicsManager {
     gravityQuat: THREE.Quaternion;
     closestMoon?: Moon | null;
   } {
-    let closestMoon: Moon | null = null;
-    let minDistanceSq = Infinity;
-
+    const G = 9.8;
     const entityPos = entity.getPosition();
+    const entityCurrentRotation = entity.getRotation();
+    const entityMass = entity.getMass();
+
+    let totalGravityForce = new THREE.Vector3();
+    let totalSmoothedQuat = entity.getRotation();
+
+    let closestMoon: Moon | null = null;
+    let closestDistance = Infinity;
     let closestVector = new THREE.Vector3();
 
     for (const moon of this.moons) {
       const moonPos = moon.getPosition();
+      const moonMass = moon.getMass();
+      const moonScale = moon.getScale().length();
       const diff = moonPos.clone().sub(entityPos);
-      const distanceSq = diff.lengthSq();
+      const distance = diff.length();
 
-      if (Math.sqrt(distanceSq) < 40) {
-        continue;
-      }
+      const attractionRadius = moon.getAttractionRadius();
 
-      if (distanceSq < minDistanceSq) {
-        minDistanceSq = distanceSq;
+      if (distance < closestDistance) {
+        closestDistance = distance;
         closestMoon = moon;
         closestVector = diff.clone();
       }
+
+      if (!(distance < attractionRadius)) continue;
+
+      const forceMagnitude =
+        (G * moonMass * entityMass) / (distance * distance);
+      const gravityForce = diff.normalize().multiplyScalar(forceMagnitude);
+      totalGravityForce.add(gravityForce);
+
+      const up = new THREE.Vector3(0, 1, 0);
+      const inverseGravityDir = gravityForce.clone().negate();
+
+      // Smooth continuous influence that decreases with distance
+      const influenceStrength = 1.5;
+
+      // Smooth exponential decay influence factor
+      const normalizedDistance = Math.min(distance / attractionRadius, 1.0);
+      const influenceFactor = Math.exp(-normalizedDistance * influenceStrength);
+
+      // Smooth interpolation factor (how fast to approach target orientation)
+      const lerpFactor = influenceFactor * 0.02; // Adjust this value to control smoothness
+
+      // Create a rotation that aligns the entity's current local up with gravity direction
+      const entityLocalUp = up.clone().applyQuaternion(entityCurrentRotation);
+      const alignmentRotation = new THREE.Quaternion();
+      alignmentRotation.setFromUnitVectors(entityLocalUp, inverseGravityDir);
+
+      // Apply alignment to current rotation to get target
+      const targetQuat = entityCurrentRotation.premultiply(alignmentRotation);
+
+      // Smoothly interpolate from current rotation toward target rotation
+      totalSmoothedQuat = totalSmoothedQuat.slerp(targetQuat, lerpFactor);
     }
 
     if (!closestMoon) {
@@ -280,26 +311,9 @@ export class PhysicsManager {
       };
     }
 
-    const G = 9.8 * 2;
-    const massMoon = closestMoon.mass;
-    const massEntity = entity.mass;
-
-    const distance = Math.sqrt(minDistanceSq);
-    const forceMagnitude = (G * massMoon * massEntity) / (distance * distance);
-    const gravityForce = closestVector
-      .normalize()
-      .multiplyScalar(forceMagnitude);
-
-    // --- Compute orientation: rotate entity Y+ to oppose gravity direction ---
-    const up = new THREE.Vector3(0, 1, 0); // world up assumed
-    const gravityDir = gravityForce.clone().normalize().negate(); // "up" should face opposite to gravity
-
-    const gravityQuat = new THREE.Quaternion();
-    gravityQuat.setFromUnitVectors(up, gravityDir); // rotation from up → gravity direction
-
     return {
-      gravityForce,
-      gravityQuat,
+      gravityForce: totalGravityForce,
+      gravityQuat: totalSmoothedQuat,
       closestMoon,
     };
   }

@@ -5,15 +5,9 @@ export class Cristal extends Entity {
   public ignorePhysics: boolean = true;
   constructor(
     scene: THREE.Scene,
-    params: {
-      object: THREE.Object3D;
-      position?: THREE.Vector3 | [number, number, number];
-      rotation?: THREE.Euler | [number, number, number];
-      scale?: THREE.Vector3 | number;
-    }
+    params: ConstructorParameters<typeof Entity>[1]
   ) {
     super(scene, params);
-    this.name = "Cristal";
   }
   public applyIntent(): void {}
 }
