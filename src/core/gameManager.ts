@@ -32,7 +32,7 @@ export class GameManager {
 
     this.controllerManager = controllerManager;
     this.intentManager = new IntentManager();
-    
+
     this.physicsManager = new PhysicsManager(this.moons);
 
     rayDebugger().initialize(scene, true);
@@ -48,11 +48,15 @@ export class GameManager {
     for (const entity of this.entities) {
       if (!entity.ignorePhysics) {
         this.physicsManager.registerEntityForRayDebugging(entity);
-        
+
         // Register for surface debugging if there are moons
         if (this.moons.length > 0) {
-          const surfaceManager = this.physicsManager.getSurfaceConstraintsManager();
-          surfaceManager.registerEntityForSurfaceDebugging(entity, this.moons[0]);
+          const surfaceManager =
+            this.physicsManager.getSurfaceConstraintsManager();
+          surfaceManager.registerEntityForSurfaceDebugging(
+            entity,
+            this.moons[0]
+          );
         }
       }
     }

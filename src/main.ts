@@ -14,6 +14,7 @@ import { initializeBVH } from "./utils/bvhInit";
 import { raycastingService } from "./services/raycasting.service";
 import { bvhDebugger } from "./services/bvhDebugger.service";
 import { rayDebugger } from "./services/rayDebugger.service";
+import { setupBVHDebugger } from "./services/debug-configs/bvhDebug.config";
 
 // Initialize BVH methods on BufferGeometry prototype
 initializeBVH();
@@ -96,37 +97,8 @@ const trainHead_bot = new TrainHead(sceneManager.scene, {
 const bvhDebuggerService = bvhDebugger();
 bvhDebuggerService.initialize(sceneManager.scene, true);
 
-bvhDebuggerService.registerGroupToggle({
-  key: "p",
-  groupName: "moon",
-  description: "Moon BVH visualization",
-  defaultEnabled: false,
-});
-
-bvhDebuggerService.setGroupConfig("moon", {
-  color: 0x00ff00,
-  opacity: 0.3,
-  depth: 8,
-  showLeafNodes: true,
-  showInternalNodes: true,
-  wireframe: true,
-});
-
-bvhDebuggerService.registerGroupToggle({
-  key: "o",
-  groupName: "train",
-  description: "Train head visualization",
-  defaultEnabled: false,
-});
-
-bvhDebuggerService.setGroupConfig("train", {
-  color: 0xff0000,
-  opacity: 0.3,
-  depth: 8,
-  showLeafNodes: true,
-  showInternalNodes: true,
-  wireframe: true,
-});
+// Setup BVH debugger configuration
+setupBVHDebugger(bvhDebuggerService);
 
 // Register objects for automatic BVH updates
 bvhDebuggerService.registerObject("moon", moon1.object, () => moon1.getId());

@@ -2,6 +2,7 @@ import type { Entity } from "../entities/entity";
 import type { Moon } from "../entities/moon";
 import type { MovementIntent } from "./interfaces/movementIntent.interface";
 import { rayDebugger } from "../services/rayDebugger.service";
+import { setupRayDebugger } from "../services/debug-configs/rayDebug.config";
 import { SurfaceConstraintsManager } from "./surfaceConstraintsManager";
 import * as THREE from "three";
 
@@ -23,37 +24,8 @@ export class PhysicsManager {
     const rayDebuggerService = rayDebugger();
     if (!rayDebuggerService) return;
 
-    rayDebuggerService.setGroupConfig("gravity", {
-      color: 0xff0000,
-      scaleFactor: 2,
-      maxLength: 50,
-      headLength: undefined,
-      headWidth: undefined,
-      opacity: 0.8,
-    });
-
-    rayDebuggerService.registerGroupToggle({
-      key: "g",
-      groupName: "gravity",
-      description: "Gravity debug visualization",
-      defaultEnabled: true,
-    });
-
-    rayDebuggerService.setGroupConfig("direction", {
-      color: 0x00ff00,
-      scaleFactor: 5,
-      maxLength: 30,
-      headLength: undefined,
-      headWidth: undefined,
-      opacity: 0.9,
-    });
-
-    rayDebuggerService.registerGroupToggle({
-      key: "b",
-      groupName: "direction",
-      description: "Entity direction debug visualization",
-      defaultEnabled: true,
-    });
+    // Setup ray debugger configuration
+    setupRayDebugger(rayDebuggerService);
   }
 
   public registerEntityForRayDebugging(entity: Entity): void {
