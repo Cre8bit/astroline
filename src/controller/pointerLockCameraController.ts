@@ -3,7 +3,6 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import type { MovementIntent } from "../core/interfaces/movementIntent.interface";
 import { CameraController } from "./base/cameraController";
 import { PlayerModeEnum } from "../core/enums/playerMode.enum";
-import { Player } from "../entities/player";
 
 export class PointerLockCameraController extends CameraController<
   THREE.PerspectiveCamera,
